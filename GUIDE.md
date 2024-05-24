@@ -43,3 +43,26 @@ For wrapped batches:
   - 一个使用 warp
   - 一个不使用 warp
   
+
+
+## 新的思路 生成相似的分子
+使用纯的 diffuion
+
+- 关键：block_size 参数
+  - block_size = 1, 即块的长度为1，退化成自回归
+  - block_size = model.length, 块的长度等于序列长度，即一块，不分块，也就是纯的diffusion
+
+- 目的：能生成和输入到 SMILES 性质类似的 SMILES
+- 实现：
+  - 数据：
+    - 根据分子指纹聚类数据，一个SMILES可能出现在不同的序列中，
+    - 一条序列中,包含很多条SMILES，一条序列都是具有相同特性的。初步设定，一条序列的长度统一为 4080，smiles直接用eos分割
+    - 最终的训练数据就是，每条样本都包含了多条SMILES，这些SMLES具有相同的分子指纹特性。用 eos 隔开
+  - 训练：
+    - 将原项目中的 block_size = model.length，块的长度等于序列长度，即一块，不分块，也就是纯的diffusion
+    - 使用 dit
+  - 采样：
+    - 如果我想生成和 SMILES A 类似的分子，我在采样的时候，将 A 固定在最前面的token上，然后扩散还原，其他token
+    - 期望可以生成和A类似性质的SMLES
+    - 然后根据EOS切割解码
+   
