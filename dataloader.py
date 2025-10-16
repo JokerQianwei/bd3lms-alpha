@@ -180,6 +180,9 @@ class Text8Tokenizer(transformers.PreTrainedTokenizer):
     return self._vocab_str_to_int
 
 
+from tokenizer import SmilesTokenizer as RxnSmilesTokenizer
+
+
 def get_lambada_test_dataset():
     url = "https://openaipublic.blob.core.windows.net/gpt-2/data/lambada_test.jsonl"
 
@@ -334,7 +337,8 @@ def _group_texts(examples, block_size, bos, eos, insert_special_tokens=True):
 def get_dataset(
     dataset_name, tokenizer, wrap, mode, cache_dir,
     block_size=1024, num_proc=len(os.sched_getaffinity(0)),
-    streaming=False, revision : Optional[str]=None, insert_eos=True, insert_special_tokens=True):
+    streaming=False, revision : Optional[str]=None, insert_eos=True, insert_special_tokens=True,
+    raw_data_path: Optional[str]=None):
   eos_tag = ''
   if not insert_eos:
     eos_tag = '_eosFalse'
@@ -388,6 +392,10 @@ def get_dataset(
     assert revision is None
     dataset = get_text8_dataset(
       cache_dir, max_seq_length=block_size, crop_train=True)
+  elif dataset_name == 'smiles':
+    # 原始数据从 raw_data_path 加载（HF Dataset 磁盘目录），处理后的缓存保存在 cache_dir/_path
+    src_path = raw_data_path if raw_data_path is not None else cache_dir
+    dataset = datasets.load_from_disk(src_path)
   elif dataset_name == 'openwebtext-train':
     dataset = datasets.load_dataset(
       'openwebtext',
@@ -472,6 +480,8 @@ def get_dataset(
       text = example['sentence']
     elif 'scientific_papers' in dataset_name:
       text = example['article']
+    elif dataset_name == 'smiles':
+      text = example['input']
     else:
       text = example['text']
     
@@ -526,6 +536,13 @@ def get_dataset(
   elif dataset_name == 'ag_news':
     tokenized_dataset = tokenized_dataset.remove_columns(
       ['text', 'label'])
+  elif dataset_name == 'smiles':
+    # 原始列为 ['mc_labels', 'input', 'n_tokens']
+    kept = set(tokenized_dataset.column_names) - {'mc_labels', 'input', 'n_tokens'}
+    # 保留 tokenizer 生成的列，其它移除
+    to_remove = [c for c in tokenized_dataset.column_names if c not in kept]
+    if len(to_remove) > 0:
+      tokenized_dataset = tokenized_dataset.remove_columns(to_remove)
   else:
     tokenized_dataset = tokenized_dataset.remove_columns(
       'text')
@@ -556,6 +573,17 @@ def get_dataset(
 def get_tokenizer(config):
   if config.data.tokenizer_name_or_path == 'text8':
     tokenizer = Text8Tokenizer()
+  elif config.data.tokenizer_name_or_path in ['smiles', 'smiles_char']:
+    # 使用 tokenizer.py 中的 SmilesTokenizer（基于 BERT 词表 + SMILES 正则）
+    vocab_path = getattr(config.data, 'smiles_vocab_path', './vocab.txt')
+    tokenizer = RxnSmilesTokenizer(vocab_file=vocab_path)
+    # 若 vocab 中包含 [BOS]/[EOS]，显式注册为 special tokens；确保 pad 存在
+    if tokenizer.bos_token is None and '[BOS]' in getattr(tokenizer, 'vocab', {}):
+      tokenizer.add_special_tokens({'bos_token': '[BOS]'})
+    if tokenizer.eos_token is None and '[EOS]' in getattr(tokenizer, 'vocab', {}):
+      tokenizer.add_special_tokens({'eos_token': '[EOS]'})
+    if tokenizer.pad_token is None:
+      tokenizer.add_special_tokens({'pad_token': '[PAD]'})
   elif config.data.tokenizer_name_or_path == 'bert-base-uncased':
     tokenizer = transformers.BertTokenizer.\
       from_pretrained('bert-base-uncased')
@@ -628,7 +656,8 @@ def get_dataloaders(config, tokenizer, skip_train=False,
       cache_dir=config.data.cache_dir,
       block_size=config.model.length,
       streaming=config.data.streaming,
-      revision=config.data.get("train_revision", None))
+      revision=config.data.get("train_revision", None),
+      raw_data_path=config.data.get('raw_data_path', None))
   
   if config.data.valid in ['text8', 'lm1b', 'ag_news']:
     validation_split = 'test'
@@ -647,7 +676,8 @@ def get_dataloaders(config, tokenizer, skip_train=False,
       cache_dir=config.data.cache_dir,
       block_size=config.model.length,
       streaming=config.data.streaming,
-      revision=config.data.get("valid_revision", None))
+      revision=config.data.get("valid_revision", None),
+      raw_data_path=config.data.get('raw_data_path', None))
 
   if skip_train:
     train_loader = None

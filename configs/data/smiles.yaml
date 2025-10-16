@@ -1,0 +1,14 @@
+train: smiles
+valid: smiles
+tokenizer_name_or_path: smiles
+# 指定 SMILES 词表文件路径（与 tokenizer.py 的 SmilesTokenizer 对应）
+# 使用 hydra:runtime.cwd 固定为启动命令所在目录，避免 Hydra chdir 导致相对路径失效
+smiles_vocab_path: ${hydra:runtime.cwd}/vocab.txt
+# 约定：此路径为已经使用 datasets.save_to_disk 保存的 HF Dataset 目录
+# 原始 HF Dataset 目录（未经处理）
+raw_data_path: ${hydra:runtime.cwd}/data/DrugLikeSMILSE-12B-427M
+
+# 处理后的 tokenized/分块缓存目录（将自动创建，建议使用固定目录以便复用缓存）
+cache_dir: ${hydra:runtime.cwd}/cache/smiles_cache
+wrap: True
+streaming: False
