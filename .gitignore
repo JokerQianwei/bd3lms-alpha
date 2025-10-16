@@ -178,3 +178,4 @@ varlen_sample_logs/
 logs/
 
 /data
+/cache

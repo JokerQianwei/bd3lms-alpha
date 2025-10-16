@@ -472,8 +472,11 @@ def get_dataset(
       return text
     return detok
   
-  EOS = tokenizer.encode(tokenizer.eos_token)[0]
-  BOS = tokenizer.encode(tokenizer.bos_token)[0]
+  # 注意：不能用 encode(...) 的默认行为来取特殊符号的 id，
+  # 因为 encode 默认会注入 [CLS]/[SEP]，导致取第一个元素时得到的是 [CLS] 的 id。
+  # 这里改为直接通过 convert_tokens_to_ids 获取 [BOS]/[EOS] 的真实 id。
+  EOS = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
+  BOS = tokenizer.convert_tokens_to_ids(tokenizer.bos_token)
 
   def preprocess_and_tokenize(example):
     if dataset_name == 'ptb':
