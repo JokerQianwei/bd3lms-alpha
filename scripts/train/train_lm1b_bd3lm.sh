@@ -14,7 +14,8 @@
 #SBATCH --requeue                     # Requeue upon preemption
 
 BLOCK_SIZE=16
-PRETRAIN_CKPT=/share/kuleshov/ma2238/textdiffusion/checkpoints/lm1b_wrap_pretrain/checkpoints/61-850000.ckpt
+# PRETRAIN_CKPT=/share/kuleshov/ma2238/textdiffusion/checkpoints/lm1b_wrap_pretrain/checkpoints/61-850000.ckpt
+PRETRAIN_CKPT=null
 
 python -u main.py \
     loader.global_batch_size=512 \
