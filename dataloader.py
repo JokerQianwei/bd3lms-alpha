@@ -21,6 +21,27 @@ import utils
 
 LOGGER = utils.get_logger(__name__)
 
+# 提高 HuggingFace 数据集下载器 HTTP 下载的健壮性。
+# 通过 fsspec HTTPFileSystem clientkwargs 提供更大的 sockread 超时
+try:
+  import aiohttp  # type: ignore
+
+  _HF_HTTP_TIMEOUT = aiohttp.ClientTimeout(
+    total=None,          # don't enforce a total timeout
+    sock_connect=60,     # seconds to establish TCP connection
+    sock_read=900,       # allow long stalls on slow servers
+  )
+  _DOWNLOAD_CONFIG = datasets.DownloadConfig(
+    storage_options={
+      'client_kwargs': {
+        'timeout': _HF_HTTP_TIMEOUT,
+      }
+    }
+  )
+except Exception:
+  # Fallback: proceed without custom timeouts
+  _DOWNLOAD_CONFIG = None
+
 
 def wt_detokenizer(string):
   # contractions
@@ -341,17 +362,20 @@ def get_dataset(
       'wikitext',
       name='wikitext-103-raw-v1',
       cache_dir=cache_dir,
+      download_config=_DOWNLOAD_CONFIG,
       revision=revision)
   elif dataset_name == 'wikitext2':
     dataset = datasets.load_dataset(
       'wikitext',
       name='wikitext-2-raw-v1',
       cache_dir=cache_dir,
+      download_config=_DOWNLOAD_CONFIG,
       revision=revision)
   elif dataset_name == 'ptb':
     dataset = datasets.load_dataset(
       'ptb_text_only',
       cache_dir=cache_dir,
+      download_config=_DOWNLOAD_CONFIG,
       revision=revision)
   elif dataset_name == 'lambada':
     dataset = get_lambada_test_dataset()
@@ -370,6 +394,7 @@ def get_dataset(
       split='train[:-100000]',
       cache_dir=cache_dir,
       revision=revision,
+      download_config=_DOWNLOAD_CONFIG,
       streaming=False,
       trust_remote_code=True)
   elif dataset_name == 'openwebtext-valid':
@@ -378,6 +403,7 @@ def get_dataset(
       split='train[-100000:]',
       cache_dir=cache_dir,
       revision=revision,
+      download_config=_DOWNLOAD_CONFIG,
       streaming=False,
       trust_remote_code=True)
   elif dataset_name == 'scientific_papers_arxiv':
@@ -385,6 +411,7 @@ def get_dataset(
       'scientific_papers', 'arxiv',
       trust_remote_code=True,
       cache_dir=cache_dir,
+      download_config=_DOWNLOAD_CONFIG,
       streaming=streaming,
       revision=revision)
   elif dataset_name == 'scientific_papers_pubmed':
@@ -392,18 +419,21 @@ def get_dataset(
       'scientific_papers', 'pubmed',
       trust_remote_code=True,
       cache_dir=cache_dir,
+      download_config=_DOWNLOAD_CONFIG,
       streaming=streaming,
       revision=revision)
   elif dataset_name == 'ag_news':
     dataset = datasets.load_dataset(
       'ag_news',
       cache_dir=cache_dir,
+      download_config=_DOWNLOAD_CONFIG,
       streaming=streaming,
       revision=revision)
   else:
     dataset = datasets.load_dataset(
       dataset_name,
       cache_dir=cache_dir,
+      download_config=_DOWNLOAD_CONFIG,
       streaming=streaming,
       trust_remote_code=True,
       revision=revision)
