@@ -9,6 +9,6 @@ smiles_vocab_path: ${hydra:runtime.cwd}/vocab.txt
 raw_data_path: ${hydra:runtime.cwd}/data/DrugLikeSMILSE-12B-427M
 
 # 处理后的 tokenized/分块缓存目录（将自动创建，建议使用固定目录以便复用缓存）
-cache_dir: ${hydra:runtime.cwd}/cache/smiles_cache
+cache_dir: ${hydra:runtime.cwd}/data/smiles_cache
 wrap: True
 streaming: False

@@ -16,13 +16,12 @@
 BLOCK_SIZE=4
 SEQ_LEN=64
 PRETRAIN_CKPT=null  # to train from scratch; set to HF/ckpt path to warm start
+MAX_STEPS=330_000
 
 python -u main.py \
-    loader.global_batch_size=512 \
-    loader.eval_global_batch_size=512 \
-    loader.batch_size=64 \
-    loader.eval_batch_size=64 \
-    model=small \
+    loader.global_batch_size=100 \
+    loader.eval_global_batch_size=100 \
+    model=medium \
     algo=bd3lm \
     algo.clip_search_widths=[0.5,0.6,0.7,0.8,0.9] \
     data=smiles \
@@ -32,5 +31,8 @@ python -u main.py \
     mode=train \
     model.attn_backend=flex \
     training.resample=True \
-    training.from_pretrained=$PRETRAIN_CKPT
+    training.from_pretrained=$PRETRAIN_CKPT \
+    trainer.max_steps=$MAX_STEPS \
+    trainer.val_check_interval=0.1 \
+    trainer.limit_val_batches=0.01
 

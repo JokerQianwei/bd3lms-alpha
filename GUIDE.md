@@ -2,7 +2,8 @@
 
 ## 计划
 - 统计 SMILES 的长度分布，确定 model.length, block-size=4(初步)】
-  - block-size越小质量越高，越大速度越快 
+  - block-size 越小质量越高（越接近自回归），越大速度越快（越接近DDPM） 
+  - block-size 是块的长度
 - 弄懂原始模型是如何处理数据的，lm1b模型，是否开启 wrap
 
 
@@ -41,3 +42,4 @@ For wrapped batches:
 - 训练两个模型
   - 一个使用 warp
   - 一个不使用 warp
+  
