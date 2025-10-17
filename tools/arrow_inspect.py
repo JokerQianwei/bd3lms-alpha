@@ -11,7 +11,7 @@ Arrow/ArrowDataset 检查工具
   - 查看单个分片文件：
       python -u -m tools.arrow_inspect --path cache/smiles_cache/smiles_train_bs64_wrapped.dat/data-00000-of-00311.arrow --rows 5
   - 同时解码 input_ids 为文本（SMILES 词表）：
-      python -u -m tools.arrow_inspect --path cache/smiles_cache/smiles_train_bs64_wrapped.dat --rows 3 --decode-input-ids --tokenizer smiles --vocab vocab.txt
+      python -u -m tools.arrow_inspect --path data/smiles_cache_len64/smiles_train_bs64_wrapped.dat  --rows 10 --decode-input-ids --tokenizer smiles --vocab vocab.txt
 
 注意：
   - .dat 目录是 HF Datasets 的磁盘目录，内部包含若干 data-*-of-*.arrow 分片。

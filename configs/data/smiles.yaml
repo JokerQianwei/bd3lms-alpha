@@ -6,9 +6,9 @@ tokenizer_name_or_path: smiles
 smiles_vocab_path: ${hydra:runtime.cwd}/vocab.txt
 # 约定：此路径为已经使用 datasets.save_to_disk 保存的 HF Dataset 目录
 # 原始 HF Dataset 目录（未经处理）
-raw_data_path: ${hydra:runtime.cwd}/data/DrugLikeSMILSE-12B-427M
+raw_data_path: ${hydra:runtime.cwd}/data/SMILE-debug
 
 # 处理后的 tokenized/分块缓存目录（将自动创建，建议使用固定目录以便复用缓存）
-cache_dir: ${hydra:runtime.cwd}/data/smiles_cache
+cache_dir: ${hydra:runtime.cwd}/data/smiles_cache_len64-test
 wrap: True
 streaming: False
