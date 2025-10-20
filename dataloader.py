@@ -338,7 +338,7 @@ def get_dataset(
     dataset_name, tokenizer, wrap, mode, cache_dir,
     block_size=1024, num_proc=len(os.sched_getaffinity(0)),
     streaming=False, revision: Optional[str] = None, insert_eos=True, insert_special_tokens=True,
-    raw_data_path: Optional[str] = None):
+    raw_data_path: Optional[str] = None, no_special_tokens: bool = False):
   # 专门分流 SMILES 到独立实现，避免在通用路径内堆积分支逻辑
   if dataset_name == 'smiles':
     from dataloader_smiles import get_dataset_smiles
@@ -353,6 +353,7 @@ def get_dataset(
       insert_eos=insert_eos,
       insert_special_tokens=insert_special_tokens,
       raw_data_path=raw_data_path,
+      no_special_tokens=no_special_tokens,
     )
   eos_tag = ''
   if not insert_eos:
@@ -660,7 +661,8 @@ def get_dataloaders(config, tokenizer, skip_train=False,
       block_size=config.model.length,
       streaming=config.data.streaming,
       revision=config.data.get("train_revision", None),
-      raw_data_path=config.data.get('raw_data_path', None))
+      raw_data_path=config.data.get('raw_data_path', None),
+      no_special_tokens=config.data.get('no_special_tokens', False))
   
   if config.data.valid in ['text8', 'lm1b', 'ag_news']:
     validation_split = 'test'
@@ -680,7 +682,8 @@ def get_dataloaders(config, tokenizer, skip_train=False,
       block_size=config.model.length,
       streaming=config.data.streaming,
       revision=config.data.get("valid_revision", None),
-      raw_data_path=config.data.get('raw_data_path', None))
+      raw_data_path=config.data.get('raw_data_path', None),
+      no_special_tokens=config.data.get('no_special_tokens', False))
 
   if skip_train:
     train_loader = None
