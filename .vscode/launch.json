@@ -44,7 +44,8 @@
                 "model.length=64",
                 "wandb.name=null",
                 "trainer.val_check_interval=1.0"
-            ]
+            ],
+            "env": {"CUDA_VISIBLE_DEVICES": "0"}
         }
     ]
 }

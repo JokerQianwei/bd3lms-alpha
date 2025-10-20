@@ -13,7 +13,7 @@ diffusion: absorbing_state
 
 seed: 1
 
-block_size: ${model.length}
+block_size: ${model.length}  # 默认不分快
 
 loader:
   global_batch_size: 512
