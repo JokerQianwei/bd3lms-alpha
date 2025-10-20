@@ -34,50 +34,24 @@
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
-            "justMyCode": false,
+            "justMyCode": true,
             "args": [
                 "loader.global_batch_size=512",
                 "loader.eval_global_batch_size=512",
                 "loader.batch_size=64",
                 "loader.eval_batch_size=64",
                 "model=small",
-                "algo=bd3lm",
+                "algo=mdlm",
                 "algo.clip_search_widths=[0.5,0.6,0.7,0.8,0.9]",
                 "data=smiles",
                 "model.length=128",
                 "block_size=16",
-                "wandb.name=bd3lm-lm1b-block_size16",
-                "mode=train",
-                "model.attn_backend=flex",
-                "training.resample=True",
-                "training.from_pretrained=null",
-            ]
-        },
-        {
-            "name": "SMILES-debug Training",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/main.py",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "args": [
-                "loader.global_batch_size=512",
-                "loader.eval_global_batch_size=512",
-                "loader.batch_size=64",
-                "loader.eval_batch_size=64",
-                "model=small",
-                "algo=bd3lm",
-                "algo.clip_search_widths=[0.5,0.6,0.7,0.8,0.9]",
-                "data=smiles_debug",
-                "model.length=128",
-                "block_size=16",
-                "wandb.name=bd3lm-lm1b-block_size16",
+                "wandb.name=null",
                 "mode=train",
                 "model.attn_backend=flex",
                 "training.resample=True",
                 "training.from_pretrained=null",
             ]
         }
-
     ]
 }

@@ -344,10 +344,14 @@ def get_dataset(
     eos_tag = '_eosFalse'
   if not insert_special_tokens:
     eos_tag = '_specialFalse'
+  # 为避免非 wrap 的 SMILES 模式与旧缓存（[CLS]/[SEP] 样式）混淆，追加样式标记
+  style_tag = ''
+  if dataset_name == 'smiles' and not wrap and insert_special_tokens:
+    style_tag = '_bosEOS'
   if wrap:
-    filename = f'{dataset_name}_{mode}_bs{block_size}_wrapped{eos_tag}.dat'
+    filename = f'{dataset_name}_{mode}_bs{block_size}_wrapped{eos_tag}{style_tag}.dat'
   else:
-    filename = f'{dataset_name}_{mode}_bs{block_size}_unwrapped{eos_tag}.dat'
+    filename = f'{dataset_name}_{mode}_bs{block_size}_unwrapped{eos_tag}{style_tag}.dat'
   _path = os.path.join(cache_dir, filename)
   
   if utils.fsspec_exists(_path):
@@ -472,11 +476,20 @@ def get_dataset(
       return text
     return detok
   
-  # 注意：不能用 encode(...) 的默认行为来取特殊符号的 id，
-  # 因为 encode 默认会注入 [CLS]/[SEP]，导致取第一个元素时得到的是 [CLS] 的 id。
-  # 这里改为直接通过 convert_tokens_to_ids 获取 [BOS]/[EOS] 的真实 id。
-  EOS = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
-  BOS = tokenizer.convert_tokens_to_ids(tokenizer.bos_token)
+  # 注意：不能直接依赖 tokenizer 的默认 special tokens（BERT 风格 [CLS]/[SEP]）。
+  # 对 SMILES 更稳妥的做法是优先从 vocab.txt 中取 [BOS]/[EOS] 的 id；若不存在则回退到 CLS/SEP。
+  if dataset_name == 'smiles':
+    eos_str = '[EOS]'
+    bos_str = '[BOS]'
+    if hasattr(tokenizer, 'vocab') and eos_str in tokenizer.vocab and bos_str in tokenizer.vocab:
+      EOS = tokenizer.vocab[eos_str]
+      BOS = tokenizer.vocab[bos_str]
+    else:
+      EOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'sep_token', None))
+      BOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'cls_token', None))
+  else:
+    EOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'eos_token', None))
+    BOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'bos_token', None))
 
   def preprocess_and_tokenize(example):
     if dataset_name == 'ptb':
@@ -510,13 +523,47 @@ def get_dataset(
                          return_attention_mask=True,
                          return_token_type_ids=True)
     else:
-      tokens = tokenizer(text,
-                         max_length=block_size,
-                         padding='max_length',
-                         truncation=True,
-                         add_special_tokens=True,
-                         return_attention_mask=True,
-                         return_token_type_ids=True)
+      # 非 wrap 的通用路径；对 SMILES 做定制化：强制使用 [BOS] ... [EOS]
+      if dataset_name == 'smiles' and insert_special_tokens:
+        tmp = tokenizer(text,
+                        padding=False,
+                        truncation=True,
+                        max_length=block_size - 2,
+                        add_special_tokens=False,
+                        return_attention_mask=False,
+                        return_token_type_ids=False)
+        input_ids = []
+        attn_masks = []
+        type_ids = []
+        pad_id = (getattr(tokenizer, 'pad_token_id', None)
+                  if getattr(tokenizer, 'pad_token_id', None) is not None
+                  else (tokenizer.vocab.get('[PAD]', 0)
+                        if hasattr(tokenizer, 'vocab') else 0))
+        for ids in tmp['input_ids']:
+          seq = [BOS] + ids + [EOS]
+          if len(seq) < block_size:
+            pad_len = block_size - len(seq)
+            seq = seq + [pad_id] * pad_len
+            mask = [1] * (block_size - pad_len) + [0] * pad_len
+          else:
+            seq = seq[:block_size]
+            mask = [1] * block_size
+          input_ids.append(seq)
+          attn_masks.append(mask)
+          type_ids.append([0] * block_size)
+        tokens = {
+          'input_ids': input_ids,
+          'attention_mask': attn_masks,
+          'token_type_ids': type_ids,
+        }
+      else:
+        tokens = tokenizer(text,
+                           max_length=block_size,
+                           padding='max_length',
+                           truncation=True,
+                           add_special_tokens=True,
+                           return_attention_mask=True,
+                           return_token_type_ids=True)
     return tokens
 
   if streaming:
