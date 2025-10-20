@@ -337,21 +337,32 @@ def _group_texts(examples, block_size, bos, eos, insert_special_tokens=True):
 def get_dataset(
     dataset_name, tokenizer, wrap, mode, cache_dir,
     block_size=1024, num_proc=len(os.sched_getaffinity(0)),
-    streaming=False, revision : Optional[str]=None, insert_eos=True, insert_special_tokens=True,
-    raw_data_path: Optional[str]=None):
+    streaming=False, revision: Optional[str] = None, insert_eos=True, insert_special_tokens=True,
+    raw_data_path: Optional[str] = None):
+  # 专门分流 SMILES 到独立实现，避免在通用路径内堆积分支逻辑
+  if dataset_name == 'smiles':
+    from dataloader_smiles import get_dataset_smiles
+    return get_dataset_smiles(
+      tokenizer=tokenizer,
+      wrap=wrap,
+      mode=mode,
+      cache_dir=cache_dir,
+      block_size=block_size,
+      num_proc=num_proc,
+      streaming=streaming,
+      insert_eos=insert_eos,
+      insert_special_tokens=insert_special_tokens,
+      raw_data_path=raw_data_path,
+    )
   eos_tag = ''
   if not insert_eos:
     eos_tag = '_eosFalse'
   if not insert_special_tokens:
     eos_tag = '_specialFalse'
-  # 为避免非 wrap 的 SMILES 模式与旧缓存（[CLS]/[SEP] 样式）混淆，追加样式标记
-  style_tag = ''
-  if dataset_name == 'smiles' and not wrap and insert_special_tokens:
-    style_tag = '_bosEOS'
   if wrap:
-    filename = f'{dataset_name}_{mode}_bs{block_size}_wrapped{eos_tag}{style_tag}.dat'
+    filename = f'{dataset_name}_{mode}_bs{block_size}_wrapped{eos_tag}.dat'
   else:
-    filename = f'{dataset_name}_{mode}_bs{block_size}_unwrapped{eos_tag}{style_tag}.dat'
+    filename = f'{dataset_name}_{mode}_bs{block_size}_unwrapped{eos_tag}.dat'
   _path = os.path.join(cache_dir, filename)
   
   if utils.fsspec_exists(_path):
@@ -396,10 +407,6 @@ def get_dataset(
     assert revision is None
     dataset = get_text8_dataset(
       cache_dir, max_seq_length=block_size, crop_train=True)
-  elif dataset_name == 'smiles':
-    # 原始数据从 raw_data_path 加载（HF Dataset 磁盘目录），处理后的缓存保存在 cache_dir/_path
-    src_path = raw_data_path if raw_data_path is not None else cache_dir
-    dataset = datasets.load_from_disk(src_path)
   elif dataset_name == 'openwebtext-train':
     dataset = datasets.load_dataset(
       'openwebtext',
@@ -476,28 +483,15 @@ def get_dataset(
       return text
     return detok
   
-  # 注意：不能直接依赖 tokenizer 的默认 special tokens（BERT 风格 [CLS]/[SEP]）。
-  # 对 SMILES 更稳妥的做法是优先从 vocab.txt 中取 [BOS]/[EOS] 的 id；若不存在则回退到 CLS/SEP。
-  if dataset_name == 'smiles':
-    eos_str = '[EOS]'
-    bos_str = '[BOS]'
-    if hasattr(tokenizer, 'vocab') and eos_str in tokenizer.vocab and bos_str in tokenizer.vocab:
-      EOS = tokenizer.vocab[eos_str]
-      BOS = tokenizer.vocab[bos_str]
-    else:
-      EOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'sep_token', None))
-      BOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'cls_token', None))
-  else:
-    EOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'eos_token', None))
-    BOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'bos_token', None))
+  EOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'eos_token', None))
+  BOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, 'bos_token', None))
 
   def preprocess_and_tokenize(example):
     if dataset_name == 'ptb':
       text = example['sentence']
     elif 'scientific_papers' in dataset_name:
       text = example['article']
-    elif dataset_name == 'smiles':
-      text = example['input']
+    
     else:
       text = example['text']
     
@@ -523,47 +517,13 @@ def get_dataset(
                          return_attention_mask=True,
                          return_token_type_ids=True)
     else:
-      # 非 wrap 的通用路径；对 SMILES 做定制化：强制使用 [BOS] ... [EOS]
-      if dataset_name == 'smiles' and insert_special_tokens:
-        tmp = tokenizer(text,
-                        padding=False,
-                        truncation=True,
-                        max_length=block_size - 2,
-                        add_special_tokens=False,
-                        return_attention_mask=False,
-                        return_token_type_ids=False)
-        input_ids = []
-        attn_masks = []
-        type_ids = []
-        pad_id = (getattr(tokenizer, 'pad_token_id', None)
-                  if getattr(tokenizer, 'pad_token_id', None) is not None
-                  else (tokenizer.vocab.get('[PAD]', 0)
-                        if hasattr(tokenizer, 'vocab') else 0))
-        for ids in tmp['input_ids']:
-          seq = [BOS] + ids + [EOS]
-          if len(seq) < block_size:
-            pad_len = block_size - len(seq)
-            seq = seq + [pad_id] * pad_len
-            mask = [1] * (block_size - pad_len) + [0] * pad_len
-          else:
-            seq = seq[:block_size]
-            mask = [1] * block_size
-          input_ids.append(seq)
-          attn_masks.append(mask)
-          type_ids.append([0] * block_size)
-        tokens = {
-          'input_ids': input_ids,
-          'attention_mask': attn_masks,
-          'token_type_ids': type_ids,
-        }
-      else:
-        tokens = tokenizer(text,
-                           max_length=block_size,
-                           padding='max_length',
-                           truncation=True,
-                           add_special_tokens=True,
-                           return_attention_mask=True,
-                           return_token_type_ids=True)
+      tokens = tokenizer(text,
+                         max_length=block_size,
+                         padding='max_length',
+                         truncation=True,
+                         add_special_tokens=True,
+                         return_attention_mask=True,
+                         return_token_type_ids=True)
     return tokens
 
   if streaming:
@@ -586,13 +546,6 @@ def get_dataset(
   elif dataset_name == 'ag_news':
     tokenized_dataset = tokenized_dataset.remove_columns(
       ['text', 'label'])
-  elif dataset_name == 'smiles':
-    # 原始列为 ['mc_labels', 'input', 'n_tokens']
-    kept = set(tokenized_dataset.column_names) - {'mc_labels', 'input', 'n_tokens'}
-    # 保留 tokenizer 生成的列，其它移除
-    to_remove = [c for c in tokenized_dataset.column_names if c not in kept]
-    if len(to_remove) > 0:
-      tokenized_dataset = tokenized_dataset.remove_columns(to_remove)
   else:
     tokenized_dataset = tokenized_dataset.remove_columns(
       'text')
