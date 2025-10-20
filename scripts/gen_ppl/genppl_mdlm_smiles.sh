@@ -31,4 +31,5 @@ python -u -m main \
     seed=$SEED \
     sampling.num_sample_batches=25 \
     sampling.nucleus_p=0.9 \
-    sampling.logdir=$PWD/sample_logs/samples_mdlm_len${LENGTH}
+    sampling.logdir=$PWD/sample_logs/samples_mdlm_len${LENGTH} \
+    algo.ignore_bos=false

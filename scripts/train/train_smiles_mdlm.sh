@@ -21,4 +21,5 @@ python -u main.py \
     data=smiles \
     model.length=64 \
     wandb.name=mdlm-smiles \
-    trainer.val_check_interval=1.0
+    trainer.val_check_interval=1.0 \
+    algo.ignore_bos=false
