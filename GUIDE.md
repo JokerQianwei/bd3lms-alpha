@@ -44,36 +44,73 @@ sent1 [SEP] sent2-fragment [SEP]
 ### 生成数据cache
 不添加任何额外的token，最大长度设置为64，大于的直接截断，并打印截断多少
 
+**参考训练指令**
+```bash
+export OMP_NUM_THREADS=1
+export NCCL_IB_DISABLE=1
+export NCCL_SOCKET_IFNAME=lo
+export NCCL_NVLS_ENABLE=0
+export NCCL_COLLNET_ENABLE=0
+export NCCL_DEBUG=WARN
+
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True WANDB_DIR=./runs PYTHONPATH=. \
+python -u main.py \
+model=large algo=bd3lm \
+trainer.max_steps=330_000 \
+loader.global_batch_size=640 loader.eval_global_batch_size=640 loader.num_workers=8 \
+data.smiles_path=DATA/DrugLikeFragSeqV2-29B-425M-prepack-k20-n8 \
+model.length=160 block_size=20 \
+trainer.val_check_interval=0.1 \
+trainer.limit_val_batches=0.01 \
+trainer.devices=8 trainer.precision=bf16-mixed \
+model.attn_backend=sdpa training.resample=True \
+checkpointing.resume_from_ckpt=True \
+checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms/runs/ex6_DrugLike_scratch_large_s160b20/20251014132103/runs/ex6_DrugLike_scratch_large_s160b20/20251014132103/checkpoints/0-150000.ckpt \
+'hydra.run.dir=./runs/ex6_DrugLike_scratch_large_s${model.length}b${block_size}/${now:%Y%m%d%H%M%S}' \
+'checkpointing.save_dir=${hydra:run.dir}' \
+'sampling.logdir=${hydra:run.dir}/samples' \
+'+wandb.mode=disabled' \
+'+wandb.resume=never'
+
+```
+
+
 **SMILES**
 ```bash
 python -u main.py \
-    loader.global_batch_size=100 \
-    loader.eval_global_batch_size=100 \
-    model=small \
+    loader.global_batch_size=800 \
+    loader.eval_global_batch_size=800 \
+    model=medium \
     algo=mdlm \
     data=smiles \
-    model.length=64 \
+    model.length=100 \
     wandb.name=mdlm-smiles \
     trainer.val_check_interval=1.0 \
     algo.ignore_bos=false \
     loader.global_batch_size=800 \
     loader.eval_global_batch_size=800 \
-    data.raw_data_path=/share/home/tm866079609100000/a866071650/doomx/MolGen/DATA/DrugLikeSMILSE-12B-427M \
-    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILSE-12B-427M 
+    loader.num_workers=4 \
+    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M \
+    '+wandb.mode=disabled' \
+    '+wandb.resume=never'\
+    model.attn_backend=sdpa \
+    trainer.max_steps=330_000
 ```
+
+
+
 **Fragment**
 数据路径：/data/yqw/bd3lms/DATA/DrugLikeFragSeqV2-29B-425M
 
 ```bash
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_DATASETS_OFFLINE=1
-
 python -u main.py \
     loader.global_batch_size=800 \
     loader.eval_global_batch_size=800 \
-    model=small \
+    model=medium \
     algo=mdlm \
     data=smiles \
-    model.length=64 \
+    model.length=100 \
     wandb.name=mdlm-smiles \
     trainer.val_check_interval=1.0 \
     algo.ignore_bos=false \
@@ -81,10 +118,27 @@ python -u main.py \
     loader.eval_global_batch_size=800 \
     loader.num_workers=4 \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/DrugLikeFragSeqV2-29B-425M \
-    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M \
+    '+wandb.mode=disabled' \
+    '+wandb.resume=never'\
+    model.attn_backend=sdpa \
+    trainer.max_steps=330_000
 ```
-Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343605643
+Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343_605_643
 
+**Fragment: max_stpes 推算**
+- Train 数据量：保留 207_022_091 条
+1 个 epoch = 模型在训练过程中 把这个训练集完整走一遍
+每个 epoch 步数: steps_per_epoch = 总数据量 / global_batch_size
+假设让每个模型看 5 遍完整的数据，即 5 个 epochs：
+则：max_steps = steps_per_epoch x epochs_wanted
+  =>  max_steps = (207022091/640)  x 1 ～  323_472 ~ 330_000
+
+
+参数量：
+- 29B token 数据, 过滤条 20% ~ 23.2B token
+- 一般来说一个参数对应10个token，那么 23.2B token，就需要对应 2B 参数量 -> 2000M
+medium -> 322 M
 
 ---
 
