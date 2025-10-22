@@ -78,26 +78,29 @@ checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3l
 **SMILES**
 ```bash
 python -u main.py \
-    loader.global_batch_size=800 \
-    loader.eval_global_batch_size=800 \
-    model=medium \
+    loader.global_batch_size=1600 \
+    loader.eval_global_batch_size=1600 \
+    model=large_1B \
     algo=mdlm \
     data=smiles \
-    model.length=100 \
+    model.length=64 \
     wandb.name=mdlm-smiles \
-    trainer.val_check_interval=1.0 \
+    trainer.val_check_interval=0.1 \
+    trainer.limit_val_batches=0.05 \
     algo.ignore_bos=false \
-    loader.global_batch_size=800 \
-    loader.eval_global_batch_size=800 \
-    loader.num_workers=4 \
+    loader.num_workers=2 \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
     data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M \
     '+wandb.mode=disabled' \
     '+wandb.resume=never'\
     model.attn_backend=sdpa \
-    trainer.max_steps=330_000
+    trainer.max_steps=220_000 \
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
 ```
 
+SMILES：丢弃超长样本 448234/426640404 (0.11%); 实际训练的样本数量: 426_192_170
+
+---
 
 
 **Fragment**
@@ -105,25 +108,26 @@ python -u main.py \
 
 ```bash
 python -u main.py \
-    loader.global_batch_size=800 \
-    loader.eval_global_batch_size=800 \
-    model=medium \
+    loader.global_batch_size=1600 \
+    loader.eval_global_batch_size=1600 \
+    model=large_1B \
     algo=mdlm \
     data=smiles \
-    model.length=100 \
+    model.length=64 \
     wandb.name=mdlm-smiles \
-    trainer.val_check_interval=1.0 \
+    trainer.val_check_interval=0.1 \
+    trainer.limit_val_batches=0.05 \
     algo.ignore_bos=false \
-    loader.global_batch_size=800 \
-    loader.eval_global_batch_size=800 \
-    loader.num_workers=4 \
+    loader.num_workers=2 \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/DrugLikeFragSeqV2-29B-425M \
     data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M \
     '+wandb.mode=disabled' \
     '+wandb.resume=never'\
     model.attn_backend=sdpa \
-    trainer.max_steps=330_000
+    trainer.max_steps=220_000 \
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
 ```
+
 Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343_605_643
 
 **Fragment: max_stpes 推算**
@@ -134,11 +138,15 @@ Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样�
 则：max_steps = steps_per_epoch x epochs_wanted
   =>  max_steps = (207022091/640)  x 1 ～  323_472 ~ 330_000
 
+1个epoch的iter：214_754 ~ 220_000
 
 参数量：
 - 29B token 数据, 过滤条 20% ~ 23.2B token
 - 一般来说一个参数对应10个token，那么 23.2B token，就需要对应 2B 参数量 -> 2000M
 medium -> 322 M
+large ->  651 M
+large_1B -> 984M
+
 
 ---
 

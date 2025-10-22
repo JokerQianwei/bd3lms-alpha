@@ -1,0 +1,13 @@
+# configs/model/large_1b.yaml
+name: large_1b
+type: ddit
+hidden_size: 1536     # d
+cond_dim: 256         # 适度上调，约 d/6~d/8，保守取 256
+length: 1024
+n_blocks: 32          # L
+n_heads: 24           # H，确保 d % H == 0 → 1536/24=64
+scale_by_sigma: True
+dropout: 0.1
+tie_word_embeddings: True
+adaln: False
+attn_backend: flash_attn
