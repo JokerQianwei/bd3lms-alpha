@@ -133,8 +133,7 @@ def _train(config, logger, tokenizer):
     for _, callback in config.callbacks.items():
       callbacks.append(hydra.utils.instantiate(callback))
 
-  train_ds, valid_ds = dataloader.get_dataloaders(
-    config, tokenizer)
+  train_ds, valid_ds = dataloader.get_dataloaders(config, tokenizer)
   _print_batch(train_ds, valid_ds, tokenizer)
 
   if config.training.from_pretrained is not None and ckpt_path is None:

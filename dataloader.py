@@ -339,7 +339,7 @@ def get_dataset(
     block_size=1024, num_proc=len(os.sched_getaffinity(0)),
     streaming=False, revision: Optional[str] = None, insert_eos=True, insert_special_tokens=True,
     raw_data_path: Optional[str] = None, no_special_tokens: bool = False):
-  # 专门分流 SMILES 到独立实现，避免在通用路径内堆积分支逻辑
+  # 分流 SMILES 到独立实现
   if dataset_name == 'smiles':
     from dataloader_smiles import get_dataset_smiles
     return get_dataset_smiles(
@@ -575,7 +575,7 @@ def get_dataset(
 
 
 def get_tokenizer(config):
-  if config.data.tokenizer_name_or_path in ['smiles', 'fragment']:
+  if config.data.tokenizer_name_or_path == 'smiles':
     # 使用 tokenizer.py 中的 SmilesTokenizer（基于 BERT 词表 + SMILES 正则）
     vocab_path = getattr(config.data, 'smiles_vocab_path', './vocab.txt')
     tokenizer = SmilesTokenizer(vocab_file=vocab_path)

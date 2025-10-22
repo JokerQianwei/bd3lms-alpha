@@ -23,7 +23,7 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
                        no_special_tokens: bool = False):
   """SMILES 专用数据管线：分词/分块/缓存（与原实现等价）。"""
 
-  # 生成缓存文件名（保持与历史一致）
+  # 生成缓存文件名
   eos_tag = "_specialFalse" if not insert_special_tokens else ("_eosFalse" if not insert_eos else "")
   style_tag = "_bosEOS" if (not wrap and insert_special_tokens) else ("_noSpecials" if (not wrap and not insert_special_tokens and no_special_tokens) else "")
   mode_tag = "wrapped" if wrap else "unwrapped"
@@ -36,16 +36,12 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
   LOGGER.info(f"Generating SMILES data at: {_path}")
   data = datasets.load_from_disk(raw_data_path or cache_dir)[mode]
 
-  # 获取 BOS/EOS：优先从 vocab 中取 [BOS]/[EOS]，否则回退到 CLS/SEP
-  if getattr(tokenizer, "vocab", None) and "[EOS]" in tokenizer.vocab and "[BOS]" in tokenizer.vocab:
-    EOS, BOS = tokenizer.vocab["[EOS]"], tokenizer.vocab["[BOS]"]
-  else:
-    EOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, "sep_token", None))
-    BOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, "cls_token", None))
-
+  EOS, BOS = tokenizer.vocab["[EOS]"], tokenizer.vocab["[BOS]"]
+  
   def preprocess_and_tokenize(example):
     if "input" in example: text = example["input"]
     elif "text" in example: text = example["text"]
+
     tokenizer.padding_side = "right"; tokenizer.truncation_side = "right"
     if wrap:
       tokens = tokenizer(text, add_special_tokens=False)
@@ -53,25 +49,23 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
     else:
       if insert_special_tokens:
         tmp = tokenizer(text, padding=False, truncation=True, max_length=block_size-2, add_special_tokens=False)
-        input_ids, attn_masks, type_ids = [], [], []
-        pad_id = tokenizer.pad_token_id if getattr(tokenizer, "pad_token_id", None) is not None else (tokenizer.vocab.get("[PAD]", 0) if hasattr(tokenizer, "vocab") else 0)
+        input_ids, attn_masks= [], []
+        pad_id = tokenizer.vocab.get("[PAD]")
         for ids in tmp["input_ids"]:
           seq = ([BOS] + ids + [EOS])[:block_size]; pad_len = max(0, block_size - len(seq))
           input_ids.append(seq + [pad_id]*pad_len)
           attn_masks.append([1]*(block_size-pad_len) + [0]*pad_len)
-          type_ids.append([0]*block_size)
-        tokens = {"input_ids": input_ids, "attention_mask": attn_masks, "token_type_ids": type_ids}
+        tokens = {"input_ids": input_ids, "attention_mask": attn_masks}
       else:
         if no_special_tokens:
           tmp = tokenizer(text, padding=False, truncation=True, max_length=block_size, add_special_tokens=False)
-          input_ids, attn_masks, type_ids = [], [], []
-          pad_id = tokenizer.pad_token_id if getattr(tokenizer, "pad_token_id", None) is not None else (tokenizer.vocab.get("[PAD]", 0) if hasattr(tokenizer, "vocab") else 0)
+          input_ids, attn_masks= [], []
+          pad_id = tokenizer.vocab.get("[PAD]")
           for ids in tmp["input_ids"]:
             seq = ids[:block_size]; pad_len = max(0, block_size - len(seq))
             input_ids.append(seq + [pad_id]*pad_len)
             attn_masks.append([1]*(block_size-pad_len) + [0]*pad_len)
-            type_ids.append([0]*block_size)
-          tokens = {"input_ids": input_ids, "attention_mask": attn_masks, "token_type_ids": type_ids}
+          tokens = {"input_ids": input_ids, "attention_mask": attn_masks}
         else:
           tokens = tokenizer(text, max_length=block_size, padding="max_length", truncation=True, add_special_tokens=True)
     return tokens
