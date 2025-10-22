@@ -180,7 +180,7 @@ class Text8Tokenizer(transformers.PreTrainedTokenizer):
     return self._vocab_str_to_int
 
 
-from tokenizer import SmilesTokenizer as RxnSmilesTokenizer
+from tokenizer import SmilesTokenizer
 
 
 def get_lambada_test_dataset():
@@ -575,50 +575,31 @@ def get_dataset(
 
 
 def get_tokenizer(config):
-  if config.data.tokenizer_name_or_path == 'text8':
-    tokenizer = Text8Tokenizer()
-  elif config.data.tokenizer_name_or_path in ['smiles', 'smiles_char']:
+  if config.data.tokenizer_name_or_path in ['smiles', 'fragment']:
     # 使用 tokenizer.py 中的 SmilesTokenizer（基于 BERT 词表 + SMILES 正则）
     vocab_path = getattr(config.data, 'smiles_vocab_path', './vocab.txt')
-    tokenizer = RxnSmilesTokenizer(vocab_file=vocab_path)
-    # 若 vocab 中包含 [BOS]/[EOS]，显式注册为 special tokens；确保 pad 存在
-    if tokenizer.bos_token is None and '[BOS]' in getattr(tokenizer, 'vocab', {}):
-      tokenizer.add_special_tokens({'bos_token': '[BOS]'})
-    if tokenizer.eos_token is None and '[EOS]' in getattr(tokenizer, 'vocab', {}):
-      tokenizer.add_special_tokens({'eos_token': '[EOS]'})
-    if tokenizer.pad_token is None:
-      tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    tokenizer = SmilesTokenizer(vocab_file=vocab_path)
+    tokenizer.bos_token = "[BOS]"
+    tokenizer.bos_token_id = tokenizer.convert_tokens_to_ids("[BOS]")
+    tokenizer.eos_token = "[EOS]"
+    tokenizer.eos_token_id = tokenizer.convert_tokens_to_ids("[EOS]")
+    tokenizer.sep_token = "[SEP]"
+    tokenizer.sep_token_id = tokenizer.convert_tokens_to_ids("[SEP]")
+
+  elif config.data.tokenizer_name_or_path == 'text8':
+    tokenizer = Text8Tokenizer()
   elif config.data.tokenizer_name_or_path == 'bert-base-uncased':
     tokenizer = transformers.BertTokenizer.\
       from_pretrained('bert-base-uncased')
   else:
     tokenizer = transformers.AutoTokenizer.from_pretrained(
       config.data.tokenizer_name_or_path)
-
   if (isinstance(tokenizer, transformers.GPT2TokenizerFast)
       or isinstance(tokenizer, transformers.GPT2Tokenizer)):
     tokenizer._tokenizer.post_processor = tokenizers.processors.BertProcessing(
       (tokenizer.bos_token, tokenizer.bos_token_id),
       (tokenizer.eos_token, tokenizer.eos_token_id))
-
-  # For wrapped batches:
-  #  [BOS] sent1 [EOS] sent2-fragment [EOS]
-  #  [BOS] sent2-fragment [EOS] sent3 [EOS]
-  if tokenizer.bos_token is None:
-    if tokenizer.cls_token is None:
-      raise AttributeError(
-        'Tokenizer must have a bos_token or '
-        f'cls_token: {tokenizer}')
-    tokenizer.bos_token = tokenizer.cls_token
-  if tokenizer.eos_token is None:
-    if tokenizer.sep_token is None:
-      raise AttributeError(
-        'Tokenizer must have a eos_token '
-        f'or sep_token: {tokenizer}')
-    tokenizer.eos_token = tokenizer.sep_token
-  if tokenizer.pad_token is None:
-    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-
+    
   return tokenizer
     
 
