@@ -49,7 +49,7 @@ scripts/train/train_smiles_mdlm.sh
 
 
 **Fragment**
-
+数据路径：/data/yqw/bd3lms/DATA/DrugLikeFragSeqV2-29B-425M
 
 ---
 
