@@ -44,7 +44,8 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
     BOS = tokenizer.convert_tokens_to_ids(getattr(tokenizer, "cls_token", None))
 
   def preprocess_and_tokenize(example):
-    text = example["input"]
+    if "input" in example: text = example["input"]
+    elif "text" in example: text = example["text"]
     tokenizer.padding_side = "right"; tokenizer.truncation_side = "right"
     if wrap:
       tokens = tokenizer(text, add_special_tokens=False)

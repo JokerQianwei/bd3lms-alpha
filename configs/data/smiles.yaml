@@ -2,8 +2,8 @@ train: smiles
 valid: smiles
 tokenizer_name_or_path: smiles
 smiles_vocab_path: ${hydra:runtime.cwd}/vocab.txt
-raw_data_path: ${hydra:runtime.cwd}/data/DrugLikeSMILSE-debug
-cache_dir: ${hydra:runtime.cwd}/data/smiles_cache_len64-3-test10
+raw_data_path: /data/yqw/bd3lms-alpha/data/DrugLikeSMILSE_packed1024_butina_s055_blocks10k
+cache_dir: ${hydra:runtime.cwd}/data/cache/cache-DrugLikeSMILSE_packed1024_butina_s055_blocks10k
 wrap: False
 streaming: False
 no_special_tokens: True  # 新增：非 wrap 且 insert_* 关闭时，完全不添加任何特殊 token

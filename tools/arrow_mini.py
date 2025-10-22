@@ -1,9 +1,15 @@
 import pandas as pd
 import pyarrow as pa
 import pyarrow.ipc as ipc
+import os
+import sys
 
-# 1. 定义文件路径
-file_path = 'data/DrugLikeSMILSE-debug/train/data-00000-of-00001.arrow'
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+from tokenizer import SmilesTokenizer
+# 1. 定data/DrugLikeSMILSE-debug义文件路径
+file_path = 'data/DrugLikeSMILES_packed1024_debug/train/data-00000-of-01616.arrow'
+tok = SmilesTokenizer("vocab.txt")
 
 # 2. 以兼容模式读取文件
 with open(file_path, "rb") as f:
