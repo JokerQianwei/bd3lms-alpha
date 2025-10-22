@@ -45,11 +45,46 @@ sent1 [SEP] sent2-fragment [SEP]
 不添加任何额外的token，最大长度设置为64，大于的直接截断，并打印截断多少
 
 **SMILES**
-scripts/train/train_smiles_mdlm.sh
-
-
+```bash
+python -u main.py \
+    loader.global_batch_size=100 \
+    loader.eval_global_batch_size=100 \
+    model=small \
+    algo=mdlm \
+    data=smiles \
+    model.length=64 \
+    wandb.name=mdlm-smiles \
+    trainer.val_check_interval=1.0 \
+    algo.ignore_bos=false \
+    loader.global_batch_size=800 \
+    loader.eval_global_batch_size=800 \
+    data.raw_data_path=/share/home/tm866079609100000/a866071650/doomx/MolGen/DATA/DrugLikeSMILSE-12B-427M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILSE-12B-427M 
+```
 **Fragment**
 数据路径：/data/yqw/bd3lms/DATA/DrugLikeFragSeqV2-29B-425M
+
+```bash
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_DATASETS_OFFLINE=1
+
+python -u main.py \
+    loader.global_batch_size=800 \
+    loader.eval_global_batch_size=800 \
+    model=small \
+    algo=mdlm \
+    data=smiles \
+    model.length=64 \
+    wandb.name=mdlm-smiles \
+    trainer.val_check_interval=1.0 \
+    algo.ignore_bos=false \
+    loader.global_batch_size=800 \
+    loader.eval_global_batch_size=800 \
+    loader.num_workers=4 \
+    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/DrugLikeFragSeqV2-29B-425M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M
+```
+Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343605643
+
 
 ---
 

@@ -44,13 +44,14 @@ training:
   from_pretrained: null
   eval_nll: True # always evaluate nll if block size is 1
 
-eval:
-  checkpoint_path: ${cwd:}/checkpoints/last.ckpt  # Used to evaluate a checkpoint after training.
-  disable_ema: False
-  perplexity_batch_size: 8
-  compute_perplexity_on_sanity: False
-  gen_ppl_eval_model_name_or_path: gpt2-large  # gpt2-large, meta-llama/Llama-2-7b-hf
-  generate_samples: False
+  eval:
+    checkpoint_path: ${cwd:}/checkpoints/last.ckpt  # Used to evaluate a checkpoint after training.
+    disable_ema: False
+    perplexity_batch_size: 8
+    compute_perplexity_on_sanity: False
+    enable_gen_ppl: True  # 若为 False，则不加载任何外部评测模型/分词器（避免联网）
+    gen_ppl_eval_model_name_or_path: gpt2-large  # gpt2-large, meta-llama/Llama-2-7b-hf
+    generate_samples: False
 
 optim:
   weight_decay: 0
