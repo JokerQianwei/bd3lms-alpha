@@ -95,7 +95,7 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
     kept_count = len(tokenized)
     dropped = max(0, original_count - kept_count)
     ratio = (dropped / original_count * 100.0) if original_count > 0 else 0.0
-    LOGGER.info(f"SMILES 非 wrap 模式：丢弃超长样本 {dropped}/{original_count} ({ratio:.2f}%).")
+    LOGGER.info(f"SMILES 非 wrap 模式：丢弃超长样本 {dropped}/{original_count} ({ratio:.2f}%); 实际训练的样本数量: {kept_count}")
 
     if not streaming:
       tokenized.save_to_disk(_path)

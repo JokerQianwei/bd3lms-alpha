@@ -42,8 +42,13 @@ sent1 [SEP] sent2-fragment [SEP]
 分别使用 高类药性的 smile 和 fragemnt 进行训练
 
 ### 生成数据cache
-不添加任何额外的token，最大长度设置为64，大于的直接截断
+不添加任何额外的token，最大长度设置为64，大于的直接截断，并打印截断多少
 
+**SMILES**
+scripts/train/train_smiles_mdlm.sh
+
+
+**Fragment**
 
 
 ---
