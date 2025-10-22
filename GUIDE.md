@@ -31,19 +31,22 @@ dtype: float64
 99% 的SMILES序列长度 (tokenized) 小于: 64.0
 已保存直方图：outputs/smiles_length_hist.png
 
-
 For wrapped batches:
-[BOS] sent1 [EOS] sent2-fragment [EOS]
-[BOS] sent2-fragment [EOS] sent3 [EOS]
+sent1 [SEP] sent2-fragment [SEP]
+[SEP] sent2-fragment [EOS] s [SEP]
 
 特殊词元不匹配: SmilesTokenizer 默认的特殊词元是 [CLS], [SEP], [PAD] 等，这是BERT的习惯。而Block Diffusion代码库在 _group_texts 中明确使用了 [BOS] 和 [EOS]。如果您的 vocab.txt 中没有这两个词元，或者分词器没有正确地将它们识别为 bos_token 和 eos_token，那么在数据处理时可能会出错或产生非预期的行为。
 
-## 模型
-- 训练两个模型
-  - 一个使用 warp
-  - 一个不使用 warp
-  
 
+## 测试 mdlm 部分快的代码是否正确
+分别使用 高类药性的 smile 和 fragemnt 进行训练
+
+### 生成数据cache
+不添加任何额外的token，最大长度设置为64，大于的直接截断
+
+
+
+---
 
 ## 新的思路 生成相似的分子
 使用纯的 diffuion
@@ -65,4 +68,3 @@ For wrapped batches:
     - 如果我想生成和 SMILES A 类似的分子，我在采样的时候，将 A 固定在最前面的token上，然后扩散还原，其他token
     - 期望可以生成和A类似性质的SMLES
     - 然后根据EOS切割解码
-   

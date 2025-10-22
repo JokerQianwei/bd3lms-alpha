@@ -44,7 +44,7 @@ def test_smiles_non_wrap_pipeline(tmp_path):
 
     assert len(ds) > 0
     sample = ds[0]
-    assert set(sample.keys()) == {'input_ids', 'attention_mask', 'token_type_ids'}
+    assert set(sample.keys()) == {'input_ids', 'attention_mask'}
     assert isinstance(sample['input_ids'], torch.Tensor)
     assert sample['input_ids'].shape[0] == 64
     # 最后一个有效位置应为 EOS
@@ -79,13 +79,9 @@ def test_smiles_wrap_pipeline(tmp_path):
 
 
 def _expected_cache_path(cache_dir: str, wrap: bool, mode: str = 'train', block_size: int = 64,
-                         insert_eos: bool = True, insert_special_tokens: bool = True,
-                         no_special_tokens: bool = False) -> str:
+                         insert_eos: bool = True, insert_special_tokens: bool = True) -> str:
     eos_tag = "_specialFalse" if not insert_special_tokens else ("_eosFalse" if not insert_eos else "")
-    style_tag = (
-        "_bosEOS" if (not wrap and insert_special_tokens) else
-        ("_noSpecials" if (not wrap and not insert_special_tokens and no_special_tokens) else "")
-    )
+    style_tag = ("_bosEOS" if (not wrap and insert_special_tokens) else "")
     mode_tag = "wrapped" if wrap else "unwrapped"
     return os.path.join(cache_dir, f"smiles_{mode}_bs{block_size}_{mode_tag}{eos_tag}{style_tag}.dat")
 
@@ -129,7 +125,7 @@ def test_smiles_non_wrap_no_special_tokens(tmp_path):
     ds = dataloader.get_dataset(
         dataset_name='smiles', tokenizer=tok, wrap=False, mode='train', cache_dir=cache_dir,
         block_size=64, num_proc=1, streaming=False, insert_eos=False, insert_special_tokens=False,
-        raw_data_path=raw, no_special_tokens=True,
+        raw_data_path=raw,
     )
     assert len(ds) > 0
     sample = ds[0]
@@ -140,6 +136,6 @@ def test_smiles_non_wrap_no_special_tokens(tmp_path):
             assert sid not in ids
     # attention_mask 合理且长度匹配
     assert sample['attention_mask'].shape[0] == 64
-    # 缓存路径应包含 _noSpecials 标签
-    expected = _expected_cache_path(cache_dir, wrap=False, insert_eos=False, insert_special_tokens=False, no_special_tokens=True)
+    # 缓存路径应不含 _bosEOS（因为 insert_special_tokens=False），但包含 _specialFalse
+    expected = _expected_cache_path(cache_dir, wrap=False, insert_eos=False, insert_special_tokens=False)
     assert os.path.exists(expected), expected

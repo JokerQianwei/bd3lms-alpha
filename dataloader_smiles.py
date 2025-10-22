@@ -19,13 +19,12 @@ def _group_texts(examples, block_size: int, bos: int, eos: int, insert_special_t
 
 def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_size: int,
                        num_proc: int, streaming: bool, insert_eos: bool,
-                       insert_special_tokens: bool, raw_data_path: Optional[str] = None,
-                       no_special_tokens: bool = False):
+                       insert_special_tokens: bool, raw_data_path: Optional[str] = None):
   """SMILES 专用数据管线：分词/分块/缓存（与原实现等价）。"""
 
   # 生成缓存文件名
   eos_tag = "_specialFalse" if not insert_special_tokens else ("_eosFalse" if not insert_eos else "")
-  style_tag = "_bosEOS" if (not wrap and insert_special_tokens) else ("_noSpecials" if (not wrap and not insert_special_tokens and no_special_tokens) else "")
+  style_tag = "_bosEOS" if (not wrap and insert_special_tokens) else ""
   mode_tag = "wrapped" if wrap else "unwrapped"
   _path = os.path.join(cache_dir, f"smiles_{mode}_bs{block_size}_{mode_tag}{eos_tag}{style_tag}.dat")
 
@@ -35,6 +34,7 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
 
   LOGGER.info(f"Generating SMILES data at: {_path}")
   data = datasets.load_from_disk(raw_data_path or cache_dir)[mode]
+  original_count = len(data)
 
   EOS, BOS = tokenizer.vocab["[EOS]"], tokenizer.vocab["[BOS]"]
   
@@ -48,26 +48,29 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
       if insert_eos: tokens = {"input_ids": [t + [EOS] for t in tokens["input_ids"]]}
     else:
       if insert_special_tokens:
-        tmp = tokenizer(text, padding=False, truncation=True, max_length=block_size-2, add_special_tokens=False)
+        # 不再截断：先完整分词，然后丢弃长度超限（需预留 BOS/EOS）
+        tmp = tokenizer(text, padding=False, truncation=False, add_special_tokens=False)
         input_ids, attn_masks= [], []
         pad_id = tokenizer.vocab.get("[PAD]")
         for ids in tmp["input_ids"]:
-          seq = ([BOS] + ids + [EOS])[:block_size]; pad_len = max(0, block_size - len(seq))
+          if len(ids) + 2 > block_size: 
+            continue
+          seq = [BOS] + ids + [EOS]
+          pad_len = max(0, block_size - len(seq))
           input_ids.append(seq + [pad_id]*pad_len)
           attn_masks.append([1]*(block_size-pad_len) + [0]*pad_len)
         tokens = {"input_ids": input_ids, "attention_mask": attn_masks}
       else:
-        if no_special_tokens:
-          tmp = tokenizer(text, padding=False, truncation=True, max_length=block_size, add_special_tokens=False)
-          input_ids, attn_masks= [], []
-          pad_id = tokenizer.vocab.get("[PAD]")
-          for ids in tmp["input_ids"]:
-            seq = ids[:block_size]; pad_len = max(0, block_size - len(seq))
-            input_ids.append(seq + [pad_id]*pad_len)
-            attn_masks.append([1]*(block_size-pad_len) + [0]*pad_len)
-          tokens = {"input_ids": input_ids, "attention_mask": attn_masks}
-        else:
-          tokens = tokenizer(text, max_length=block_size, padding="max_length", truncation=True, add_special_tokens=True)
+        tmp = tokenizer(text, padding=False, truncation=False, add_special_tokens=False)
+        input_ids, attn_masks= [], []
+        pad_id = tokenizer.vocab.get("[PAD]")
+        for ids in tmp["input_ids"]:
+          if len(ids) > block_size:
+            continue
+          pad_len = max(0, block_size - len(ids))
+          input_ids.append(ids + [pad_id]*pad_len)
+          attn_masks.append([1]*(block_size-pad_len) + [0]*pad_len)
+        tokens = {"input_ids": input_ids, "attention_mask": attn_masks}
     return tokens
 
   tokenized = data.map(preprocess_and_tokenize, batched=True) if streaming else data.map(preprocess_and_tokenize, batched=True, num_proc=num_proc, load_from_cache_file=True)
@@ -77,6 +80,15 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
   if cols: tokenized = tokenized.remove_columns(cols)
 
   if not wrap:
+    # 统计丢弃数量（仅在可计算长度时）
+    try:
+      kept_count = len(tokenized)
+    except Exception:
+      kept_count = None
+    if original_count is not None and kept_count is not None:
+      dropped = max(0, original_count - kept_count)
+      ratio = (dropped / original_count * 100.0) if original_count > 0 else 0.0
+      LOGGER.info(f"SMILES 非 wrap 模式：丢弃超长样本 {dropped}/{original_count} ({ratio:.2f}%).")
     if not streaming:
       tokenized.save_to_disk(_path)
     return tokenized.with_format("torch")
