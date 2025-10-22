@@ -45,50 +45,58 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
     tokenizer.padding_side = "right"; tokenizer.truncation_side = "right"
     if wrap:
       tokens = tokenizer(text, add_special_tokens=False)
-      if insert_eos: tokens = {"input_ids": [t + [EOS] for t in tokens["input_ids"]]}
+      if insert_eos:
+        tokens = {"input_ids": [t + [EOS] for t in tokens["input_ids"]]}
+      return tokens
     else:
-      if insert_special_tokens:
-        # 不再截断：先完整分词，然后丢弃长度超限（需预留 BOS/EOS）
-        tmp = tokenizer(text, padding=False, truncation=False, add_special_tokens=False)
-        input_ids, attn_masks= [], []
-        pad_id = tokenizer.vocab.get("[PAD]")
-        for ids in tmp["input_ids"]:
-          if len(ids) + 2 > block_size: 
-            continue
-          seq = [BOS] + ids + [EOS]
-          pad_len = max(0, block_size - len(seq))
-          input_ids.append(seq + [pad_id]*pad_len)
-          attn_masks.append([1]*(block_size-pad_len) + [0]*pad_len)
-        tokens = {"input_ids": input_ids, "attention_mask": attn_masks}
-      else:
-        tmp = tokenizer(text, padding=False, truncation=False, add_special_tokens=False)
-        input_ids, attn_masks= [], []
-        pad_id = tokenizer.vocab.get("[PAD]")
-        for ids in tmp["input_ids"]:
-          if len(ids) > block_size:
-            continue
-          pad_len = max(0, block_size - len(ids))
-          input_ids.append(ids + [pad_id]*pad_len)
-          attn_masks.append([1]*(block_size-pad_len) + [0]*pad_len)
-        tokens = {"input_ids": input_ids, "attention_mask": attn_masks}
-    return tokens
+      # 非 wrap：先无截断分词（不加任何特殊符），返回中间列供后续过滤与构造
+      tmp = tokenizer(text, add_special_tokens=False, padding=False, truncation=False, return_attention_mask=False,)
+      ids_list = tmp["input_ids"]
+      lens = [len(ids) for ids in ids_list]
+      return {"_ids": ids_list, "_len": lens}
 
   tokenized = data.map(preprocess_and_tokenize, batched=True) if streaming else data.map(preprocess_and_tokenize, batched=True, num_proc=num_proc, load_from_cache_file=True)
 
-  # 移除原始列，仅保留 tokenizer 生成的列
-  cols = [c for c in tokenized.column_names if c in {"mc_labels", "input", "n_tokens"}]
-  if cols: tokenized = tokenized.remove_columns(cols)
-
+  # 非 wrap：基于长度过滤 + 构造定长样本
   if not wrap:
-    # 统计丢弃数量（仅在可计算长度时）
-    try:
-      kept_count = len(tokenized)
-    except Exception:
-      kept_count = None
-    if original_count is not None and kept_count is not None:
-      dropped = max(0, original_count - kept_count)
-      ratio = (dropped / original_count * 100.0) if original_count > 0 else 0.0
-      LOGGER.info(f"SMILES 非 wrap 模式：丢弃超长样本 {dropped}/{original_count} ({ratio:.2f}%).")
+    max_len = block_size - 2 if insert_special_tokens else block_size
+
+    def _keep_fn(batch):
+      return [l <= max_len for l in batch["_len"]]
+
+    tokenized = tokenized.filter(_keep_fn, batched=True)
+
+    def _build_features(batch):
+      pad_id = tokenizer.vocab.get("[PAD]")
+      input_ids, attn_masks = [], []
+      for ids in batch["_ids"]:
+        if insert_special_tokens:
+          seq = [BOS] + ids + [EOS]
+        else:
+          seq = ids
+        pad_len = block_size - len(seq)
+        input_ids.append(seq + [pad_id] * pad_len)
+        attn_masks.append([1] * (block_size - pad_len) + [0] * pad_len)
+      return {"input_ids": input_ids, "attention_mask": attn_masks}
+
+    tokenized = tokenized.map(
+      _build_features,
+      batched=True,
+      num_proc=None if streaming else num_proc,
+      load_from_cache_file=not streaming,
+    )
+
+    # 移除中间与原始列
+    cols = [c for c in tokenized.column_names if c not in {"input_ids", "attention_mask"}]
+    if cols:
+      tokenized = tokenized.remove_columns(cols)
+
+    # 统计丢弃数量
+    kept_count = len(tokenized)
+    dropped = max(0, original_count - kept_count)
+    ratio = (dropped / original_count * 100.0) if original_count > 0 else 0.0
+    LOGGER.info(f"SMILES 非 wrap 模式：丢弃超长样本 {dropped}/{original_count} ({ratio:.2f}%).")
+
     if not streaming:
       tokenized.save_to_disk(_path)
     return tokenized.with_format("torch")
