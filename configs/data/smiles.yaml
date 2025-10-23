@@ -7,7 +7,7 @@ cache_dir: ${hydra:runtime.cwd}/cache/cache-DrugLikeFragSeqV2-29B-425M
 wrap: False
 streaming: False
 
-insert_train_special: false 
+insert_train_special: true 
 insert_valid_special: false
-insert_train_eos: false
+insert_train_eos: true
 insert_valid_eos: false

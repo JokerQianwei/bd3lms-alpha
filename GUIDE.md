@@ -83,14 +83,13 @@ python -u main.py \
     model=large_1B \
     algo=mdlm \
     data=smiles \
-    model.length=64 \
+    model.length=66 \
     wandb=None \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
-    algo.ignore_bos=false \
     loader.num_workers=2 \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
-    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M-addBOSEOS \
     '+wandb.mode=disabled' \
     '+wandb.resume=never'\
     model.attn_backend=sdpa \
@@ -113,14 +112,13 @@ python -u main.py \
     model=large_1B \
     algo=mdlm \
     data=smiles \
-    model.length=64 \
+    model.length=66 \
     wandb=None \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
-    algo.ignore_bos=false \
     loader.num_workers=2 \
-    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/DrugLikeFragSeqV2-29B-425M \
-    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M \
+    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeFragSeqV2-29B-425M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M-addBOSEOS \
     model.attn_backend=sdpa \
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
@@ -163,7 +161,7 @@ python -u -m main \
     seed=2 \
     sampling.nucleus_p=0.9 \
     sampling.logdir=$PWD/sample_logs/samples_mdlm_len64 \
-    algo.ignore_bos=true \
+    algo.ignore_bos=false \
     model.attn_backend=sdpa \
     sampling.first_hitting=true
 
