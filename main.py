@@ -1,5 +1,6 @@
 import os
 import fsspec
+import pandas as pd
 import hydra
 import lightning as L
 import omegaconf
@@ -87,25 +88,41 @@ def generate_samples(config, logger, tokenizer):
   logger.info('Generating samples.')
   model = _load_from_checkpoint(config=config,
                                 tokenizer=tokenizer)
-  if config.eval.disable_ema:
+  if getattr(config.eval, 'disable_ema', False):
     logger.info('Disabling EMA.')
     model.ema = None
-  text_samples = model.restore_model_and_sample(num_steps=config.algo.T)
+  text_samples, smiles_stats = model.restore_model_and_sample(num_steps=config.algo.T)
   print('Text samples:', text_samples)
-  print('Generative perplexity:',
-        model.metrics.gen_ppl.compute())
-  print('Entropy:', model.metrics.gen_entropy.compute())
-  csv_path = config.sampling.logdir
-  save_dict = {'gen_ppl': model.metrics.gen_ppls,
-                'gen_nfes': model.metrics.gen_nfes,
-                'gen_entropy': model.metrics.gen_entropies,
-                'gen_lengths': model.metrics.gen_lengths,
-                'samples': [[i] for i in text_samples],
-                'seed': [config.seed for _ in range(len(text_samples))]}
-  if config.sampling.var_length:
-    print(text_samples)
-    save_dict['samples'] = ['' for _ in range(len(text_samples))]
-  utils.update_and_save_csv(save_dict, csv_path)
+  if smiles_stats:
+      print('SMILES Metrics:', smiles_stats)
+      # Save generated samples
+      samples_path = os.path.join(config.sampling.logdir, "samples.txt")
+      with fsspec.open(samples_path, 'w', auto_mkdir=True) as f:
+          f.write("\n".join(text_samples) + "\n")
+      logger.info(f"Generated SMILES samples saved to: {samples_path}")
+      # Save metrics
+      metrics_path = os.path.join(config.sampling.logdir, "metrics.txt")
+      with fsspec.open(metrics_path, 'w', auto_mkdir=True) as f:
+          f.write("SMILES Metrics:\n")
+          for key, value in smiles_stats.items():
+              f.write(f"{key}: {value}\n")
+      logger.info(f"SMILES metrics saved to: {metrics_path}")
+  else:
+      print('Generative perplexity:', model.metrics.gen_ppl.compute())
+      print('Entropy:', model.metrics.gen_entropy.compute())
+      save_dict = {
+          'gen_ppl': model.metrics.gen_ppls,
+          'gen_nfes': model.metrics.gen_nfes,
+          'gen_entropy': model.metrics.gen_entropies,
+          'gen_lengths': model.metrics.gen_lengths,
+          'samples': [[i] for i in text_samples],
+          'seed': [config.seed] * len(text_samples)
+      }
+      if config.sampling.var_length:
+          print(text_samples)
+          save_dict['samples'] = ['' for _ in range(len(text_samples))]
+      utils.update_and_save_csv(save_dict, config.sampling.logdir)
+
   return text_samples
 
 

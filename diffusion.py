@@ -714,12 +714,17 @@ class Diffusion(L.LightningModule):
       batch_size_per_gpu=self.config.loader.eval_batch_size,
       num_steps=num_steps,
       eps=eps)
-    self.metrics.record_generative_perplexity(
-      samples,
-      self.config.model.length,
-      self.config.loader.eval_batch_size,
-      self.device)
-    return samples
+    if self.config.data.valid == 'smiles':
+      smiles_metrics_calculator = utils.SmilesMetrics(n_target=len(samples))
+      smiles_stats = smiles_metrics_calculator.compute(samples)
+      return samples, smiles_stats
+    else:
+      self.metrics.record_generative_perplexity(
+        samples,
+        self.config.model.length,
+        self.config.loader.eval_batch_size,
+        self.device)
+      return samples, None
 
   def get_score(self, x, sigma):
     model_output = self.forward(x, sigma).to(torch.float64)

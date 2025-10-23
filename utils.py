@@ -234,3 +234,48 @@ class GaussianSampler:
     mu, log_var = self.gaussian_params_from_logits(x)
     sigma = log_var.exp().sqrt()
     return mu + sigma * torch.randn_like(mu)
+
+import numpy as np
+from tdc import Oracle, Evaluator
+
+class SmilesMetrics:
+    def __init__(self, n_target: int):
+        self.n_target = max(int(n_target), 1)
+        self.evaluator = Evaluator('diversity')
+        self.oracle_qed = Oracle('qed')
+        self.oracle_sa = Oracle('sa')
+
+    def compute(self, smiles_list):
+        """
+        Computes validity, uniqueness, diversity, and quality for a list of SMILES strings.
+        """
+        # 1. Validity: 有效返回条数 / 目标条数
+        validity = len(smiles_list) / self.n_target
+
+        # 2. Uniqueness: 按字符串去重（相对有效返回数）
+        seen = set()
+        uniq_list = []
+        for s in smiles_list:
+            if s not in seen:
+                seen.add(s)
+                uniq_list.append(s)
+        uniqueness = (len(uniq_list) / max(len(smiles_list), 1)) if smiles_list else 0.0
+
+        # 3. Diversity：对去重后的集合
+        diversity = float(self.evaluator(uniq_list)) if len(uniq_list) > 1 else 0.0
+
+        # 4. Quality：QED>=0.6 且 SA<=4（分母用目标条数）
+        if smiles_list:
+            q = self.oracle_qed(smiles_list)
+            s = self.oracle_sa(smiles_list)
+            ok = sum((qq >= 0.6) and (ss <= 4.0) for qq, ss in zip(q, s))
+        else:
+            ok = 0
+        quality = ok / self.n_target
+
+        return {
+            "validity": float(validity),
+            "uniqueness": float(uniqueness),
+            "diversity": float(diversity),
+            "quality": float(quality),
+        }

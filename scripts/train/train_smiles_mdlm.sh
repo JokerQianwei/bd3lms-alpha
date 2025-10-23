@@ -24,4 +24,4 @@ python -u main.py \
     trainer.val_check_interval=1.0 \
     algo.ignore_bos=false \
     data.raw_data_path=/data/yqw/bd3lms-alpha/data/DrugLikeSMILSE-debug \
-    data.cache_dir=/cache/yqw/bd3lms-alpha/data/DrugLikeSMILES_packed1024_debug211
+    data.cache_dir=yqw/bd3lms-alpha/cache/DrugLikeSMILSE-debuge
