@@ -129,7 +129,7 @@ def generate_samples(config, logger, tokenizer):
 def _train(config, logger, tokenizer):
   logger.info('Starting Training.')
   wandb_logger = None
-  if config.get('wandb', None) is not None and config['wandb']['name'] is not None:
+  if config.get('wandb') and config.wandb.get('name'):
     wandb_logger = L.pytorch.loggers.WandbLogger(
       config=omegaconf.OmegaConf.to_object(config),
       ** config.wandb)
