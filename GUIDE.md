@@ -84,7 +84,7 @@ python -u main.py \
     algo=mdlm \
     data=smiles \
     model.length=64 \
-    wandb.name=mdlm-smiles \
+    wandb=None \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
     algo.ignore_bos=false \
@@ -114,15 +114,13 @@ python -u main.py \
     algo=mdlm \
     data=smiles \
     model.length=64 \
-    wandb.name=mdlm-smiles \
+    wandb=None \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
     algo.ignore_bos=false \
     loader.num_workers=2 \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/DrugLikeFragSeqV2-29B-425M \
     data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M \
-    '+wandb.mode=disabled' \
-    '+wandb.resume=never'\
     model.attn_backend=sdpa \
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
@@ -149,6 +147,30 @@ large_1B -> 984M
 
 
 ---
+## 采样
+first_hitting 不支持并行采样
+```bash
+python -u -m main \
+    mode=sample_eval \
+    sampling.num_sample_batches=25 \
+    loader.eval_batch_size=1 \
+    data=smiles \
+    algo=mdlm \
+    algo.T=5000 \
+    model=large_1B \
+    model.length=64 \
+    eval.checkpoint_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha-main/outputs/smiles/mdlm-len64/2025.10.23/054208/checkpoints/0-80000.ckpt \
+    seed=2 \
+    sampling.nucleus_p=0.9 \
+    sampling.logdir=$PWD/sample_logs/samples_mdlm_len64 \
+    algo.ignore_bos=true \
+    model.attn_backend=sdpa \
+    sampling.first_hitting=true
+
+```
+
+
+
 
 ## 新的思路 生成相似的分子
 使用纯的 diffuion

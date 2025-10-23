@@ -43,7 +43,37 @@
                 "data=smiles",
                 "model.length=64",
                 "wandb.name=null",
-                "trainer.val_check_interval=1.0"
+                "trainer.val_check_interval=1.0",
+                "data.raw_data_path=/data/yqw/bd3lms-alpha/data/DrugLikeSMILSE-debug",
+                "data.cache_dir=/data/yqw/bd3lms-alpha/cache/DrugLikeSMILSE-debug2s8"
+                
+            ],
+            "env": {"CUDA_VISIBLE_DEVICES": "0"}
+        },
+        {
+            "name": "SMILES sample mdlm",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "wandb=None",
+                "mode=sample_eval",
+                "sampling.num_sample_batches=25",
+                "loader.eval_batch_size=1",
+                "data=smiles",
+                "algo=mdlm",
+                "algo.T=5000",
+                "model=large_1B",
+                "model.length=64",
+                "+eval.checkpoint_path=/data/yqw/bd3lms-alpha/outputs/smiles/2025.10.20/205857/checkpoints/best.ckpt",
+                "seed=2",
+                "sampling.nucleus_p=0.9",
+                "sampling.logdir=$PWD/sample_logs/samples_mdlm_len64", 
+                "algo.ignore_bos=true",
+                "model.attn_backend=sdpa",
+                "sampling.first_hitting=true"
             ],
             "env": {"CUDA_VISIBLE_DEVICES": "0"}
         }

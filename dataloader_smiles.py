@@ -26,7 +26,7 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
   eos_tag = "_specialFalse" if not insert_special_tokens else ("_eosFalse" if not insert_eos else "")
   style_tag = "_bosEOS" if (not wrap and insert_special_tokens) else ""
   mode_tag = "wrapped" if wrap else "unwrapped"
-  _path = os.path.join(cache_dir, f"smiles_{mode}_bs{block_size}_{mode_tag}{eos_tag}{style_tag}.dat")
+  _path = os.path.join(cache_dir, f"smiles_{mode}_{mode_tag}{eos_tag}{style_tag}.dat")
 
   if utils.fsspec_exists(_path):
     LOGGER.info(f"Loading SMILES data from: {_path}")
@@ -79,23 +79,19 @@ def get_dataset_smiles(tokenizer, wrap: bool, mode: str, cache_dir: str, block_s
         attn_masks.append([1] * (block_size - pad_len) + [0] * pad_len)
       return {"input_ids": input_ids, "attention_mask": attn_masks}
 
-    tokenized = tokenized.map(
-      _build_features,
-      batched=True,
-      num_proc=None if streaming else num_proc,
-      load_from_cache_file=not streaming,
-    )
+    tokenized = tokenized.map(_build_features, batched=True, num_proc=None if streaming else num_proc,load_from_cache_file=not streaming)
 
     # 移除中间与原始列
     cols = [c for c in tokenized.column_names if c not in {"input_ids", "attention_mask"}]
     if cols:
       tokenized = tokenized.remove_columns(cols)
 
-    # 统计丢弃数量
-    kept_count = len(tokenized)
-    dropped = max(0, original_count - kept_count)
-    ratio = (dropped / original_count * 100.0) if original_count > 0 else 0.0
-    LOGGER.info(f"SMILES 非 wrap 模式：丢弃超长样本 {dropped}/{original_count} ({ratio:.2f}%); 实际训练的样本数量: {kept_count}")
+    if not utils.fsspec_exists(_path):
+      # 统计丢弃数量
+      kept_count = len(tokenized)
+      dropped = max(0, original_count - kept_count)
+      ratio = (dropped / original_count * 100.0) if original_count > 0 else 0.0
+      LOGGER.info(f"构造SMILES-cached数据：丢弃超长样本 {dropped}/{original_count} ({ratio:.2f}%); 实际训练的样本数量: {kept_count}")
 
     if not streaming:
       tokenized.save_to_disk(_path)

@@ -90,8 +90,7 @@ def generate_samples(config, logger, tokenizer):
   if config.eval.disable_ema:
     logger.info('Disabling EMA.')
     model.ema = None
-  text_samples = model.restore_model_and_sample(
-    num_steps=config.algo.T)
+  text_samples = model.restore_model_and_sample(num_steps=config.algo.T)
   print('Text samples:', text_samples)
   print('Generative perplexity:',
         model.metrics.gen_ppl.compute())
@@ -113,7 +112,7 @@ def generate_samples(config, logger, tokenizer):
 def _train(config, logger, tokenizer):
   logger.info('Starting Training.')
   wandb_logger = None
-  if config.get('wandb', None) is not None:
+  if config.get('wandb', None) is not None and config['wandb']['name'] is not None:
     wandb_logger = L.pytorch.loggers.WandbLogger(
       config=omegaconf.OmegaConf.to_object(config),
       ** config.wandb)
@@ -134,7 +133,7 @@ def _train(config, logger, tokenizer):
       callbacks.append(hydra.utils.instantiate(callback))
 
   train_ds, valid_ds = dataloader.get_dataloaders(config, tokenizer)
-  _print_batch(train_ds, valid_ds, tokenizer)
+  # _print_batch(train_ds, valid_ds, tokenizer)
 
   if config.training.from_pretrained is not None and ckpt_path is None:
     logger.info(f'Loading pretrained model from {config.training.from_pretrained}')
@@ -154,14 +153,11 @@ def _train(config, logger, tokenizer):
         config=config,
         strict=False)
     # add buffers for grid search
-    model.register_buffer('sampling_eps_min', torch.tensor(
-      config.training.sampling_eps_min))
-    model.register_buffer('sampling_eps_max', torch.tensor(
-      config.training.sampling_eps_max))
+    model.register_buffer('sampling_eps_min', torch.tensor(config.training.sampling_eps_min))
+    model.register_buffer('sampling_eps_max', torch.tensor(config.training.sampling_eps_max))
   else:
     logger.info(f'Initializing new model')
-    model = diffusion.Diffusion(
-      config, tokenizer=valid_ds.tokenizer)
+    model = diffusion.Diffusion(config, tokenizer=valid_ds.tokenizer)
   trainer = hydra.utils.instantiate(
     config.trainer,
     default_root_dir=os.getcwd(),
