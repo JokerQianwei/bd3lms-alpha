@@ -67,7 +67,7 @@
                 "algo.T=5000",
                 "model=large_1B",
                 "model.length=64",
-                "+eval.checkpoint_path=/data/yqw/bd3lms-alpha/outputs/smiles/2025.10.20/205857/checkpoints/best.ckpt",
+                "+eval.checkpoint_path=/data/yqw/bd3lms-alpha/outputs/smiles/2025.10.23/170111/checkpoints/best.ckpt",
                 "seed=2",
                 "sampling.nucleus_p=0.9",
                 "sampling.logdir=$PWD/sample_logs/samples_mdlm_len64", 

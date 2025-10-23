@@ -47,12 +47,11 @@ class Metrics:
       self.valid_vars = self.init_valid_vars()
 
     # ---- Eval / HF 离线相关开关（新增：都带默认值） ----
-    self.eval_ppl_batch_size = getattr(config.eval, 'perplexity_batch_size', 8)
-    self.gen_ppl_enabled = getattr(config.eval, 'gen_ppl_enabled', True)
-    self.local_files_only = getattr(config.eval, 'local_files_only', True)
-    self.gen_ppl_eval_model_name_or_path = getattr(
-      config.eval, 'gen_ppl_eval_model_name_or_path', None
-    )
+    eval_cfg = getattr(config, 'eval', None)
+    self.eval_ppl_batch_size = getattr(eval_cfg, 'perplexity_batch_size', 8) if eval_cfg else 8
+    self.gen_ppl_enabled = getattr(eval_cfg, 'gen_ppl_enabled', False) if eval_cfg else False
+    self.local_files_only = getattr(eval_cfg, 'local_files_only', True) if eval_cfg else True
+    self.gen_ppl_eval_model_name_or_path = getattr(eval_cfg, 'gen_ppl_eval_model_name_or_path', False) if eval_cfg else False
 
     # 懒加载：延后到第一次用 PPL 时再加载
     self._tokenizer = None
