@@ -115,6 +115,29 @@ python -u main.py \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
     checkpointing.resume_from_ckpt=True \ 
     checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/last.ckpt
+
+
+python main.py \
+    loader.global_batch_size=1600 \
+    loader.eval_global_batch_size=1600 \
+    model=large_1B \
+    algo=mdlm \
+    data=smiles \
+    model.length=66 \
+    wandb=None \
+    trainer.val_check_interval=0.1 \
+    trainer.limit_val_batches=0.05 \
+    loader.num_workers=2 \
+    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M-addBOSEOS \
+    '+wandb.mode=disabled' \
+    '+wandb.resume=never' \
+    model.attn_backend=sdpa \
+    trainer.max_steps=220_000 \
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
+    checkpointing.resume_from_ckpt=True \
+    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/last.ckpt 
+
 ```
 
 构造SMILES-cached数据：丢弃超长样本 448234/426640404 (0.11%); 实际训练的样本数量: 426_192_170
@@ -139,7 +162,7 @@ Epoch 0, global step 53274: 'val/nll' was not in top 1
 数据路径：/data/yqw/bd3lms/DATA/DrugLikeFragSeqV2-29B-425M
 
 ```bash
-python -u main.py \
+python main.py \
     loader.global_batch_size=1600 \
     loader.eval_global_batch_size=1600 \
     model=large_1B \
@@ -150,13 +173,15 @@ python -u main.py \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
     loader.num_workers=2 \
-    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeFragSeqV2-29B-425M \
-    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M-addBOSEOS \
+    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M-addBOSEOS \
+    '+wandb.mode=disabled' \
+    '+wandb.resume=never' \
     model.attn_backend=sdpa \
     trainer.max_steps=220_000 \
-    'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-addBOSEOS--len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
-    checkpointing.resume_from_ckpt=True \ 
-    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/fragment/mdlm-addBOSEOS--len66/2025.10.23/201916/checkpoints/last.ckpt
+     'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
+    checkpointing.resume_from_ckpt=True \
+    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/fragment/mdlm-addBOSEOS-len66/2025.10.23/201916/checkpoints/last.ckpt
 ```
 
 Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343_605_643
@@ -194,6 +219,7 @@ python -u -m main \
     algo.ignore_bos=false \
     model.attn_backend=sdpa \
     sampling.first_hitting=true
+
 
 ```
 
