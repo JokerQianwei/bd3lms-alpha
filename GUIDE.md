@@ -75,7 +75,25 @@ checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3l
 ```
 
 
-**SMILES**
+### SMILES训练
+**max_stpes 推算**
+- Train 数据量：保留 207_022_091 条
+1 个 epoch = 模型在训练过程中 把这个训练集完整走一遍
+每个 epoch 步数: steps_per_epoch = 总数据量 / global_batch_size
+假设让每个模型看 5 遍完整的数据，即 5 个 epochs：
+则：max_steps = steps_per_epoch x epochs_wanted
+  =>  max_steps = (207022091/640)  x 1 ～  323_472 ~ 330_000
+
+1个epoch的iter：214_754 ~ 220_000
+
+参数量：
+- 29B token 数据, 过滤条 20% ~ 23.2B token
+- 一般来说一个参数对应10个token，那么 23.2B token，就需要对应 2B 参数量 -> 2000M
+medium -> 322 M
+large ->  651 M
+large_1B -> 984M
+
+
 ```bash
 python -u main.py \
     loader.global_batch_size=1600 \
@@ -94,15 +112,28 @@ python -u main.py \
     '+wandb.resume=never'\
     model.attn_backend=sdpa \
     trainer.max_steps=220_000 \
-    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
 ```
 
-SMILES：丢弃超长样本 448234/426640404 (0.11%); 实际训练的样本数量: 426_192_170
-
+构造SMILES-cached数据：丢弃超长样本 448234/426640404 (0.11%); 实际训练的样本数量: 426_192_170
 ---
+#### 实验记录
+**第一次训练**
+  | Name     | Type           | Params | Mode
+----------------------------------------------------
+0 | backbone | DIT            | 984 M  | train
+1 | noise    | LogLinearNoise | 0      | train
+----------------------------------------------------
+Epoch 0:  10%|██████████                                                                                           | 26637/266371 [3:15:36<29:20:25,  2.27it/s, v_num=0]Epoch 0, global step 26637: 'val/nll' reached 0.98462 (best 0.98462), saving model to '/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/best.ckpt' as top 1
+Epoch 0:  20%|████████████████████▌                                                                                  | 53274/266371 [6:31:24<26:05:39,  2.27it/s, v_num=0]
+Epoch 0, global step 53274: 'val/nll' was not in top 1
 
 
-**Fragment**
+
+
+
+
+### Fragment 训练
 数据路径：/data/yqw/bd3lms/DATA/DrugLikeFragSeqV2-29B-425M
 
 ```bash
@@ -121,27 +152,22 @@ python -u main.py \
     data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M-addBOSEOS \
     model.attn_backend=sdpa \
     trainer.max_steps=220_000 \
-    'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-addBOSEOS--len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
 ```
 
 Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343_605_643
 
-**Fragment: max_stpes 推算**
-- Train 数据量：保留 207_022_091 条
-1 个 epoch = 模型在训练过程中 把这个训练集完整走一遍
-每个 epoch 步数: steps_per_epoch = 总数据量 / global_batch_size
-假设让每个模型看 5 遍完整的数据，即 5 个 epochs：
-则：max_steps = steps_per_epoch x epochs_wanted
-  =>  max_steps = (207022091/640)  x 1 ～  323_472 ~ 330_000
+#### 实验记录
+  | Name     | Type           | Params | Mode
+----------------------------------------------------
+0 | backbone | DIT            | 984 M  | train
+1 | noise    | LogLinearNoise | 0      | train
+----------------------------------------------------
+Epoch 0:  10%|██████████                                                                                           | 21475/214754 [2:41:15<24:11:24,  2.22it/s, v_num=0]Epoch 0, global step 21475: 'val/nll' reached 0.76714 (best 0.76714), saving model to '/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/fragment/mdlm-addBOSEOS--len66/2025.10.23/201916/checkpoints/best.ckpt' as top 1
+Epoch 0:  20%|████████████████████▌                                                                                  | 42950/214754 [5:22:17<21:29:10,  2.22it/s, v_num=0]
+Epoch 0, global step 42950: 'val/nll' reached 0.76419 (best 0.76419), saving model to '/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/fragment/mdlm-addBOSEOS--len66/2025.10.23/201916/checkpoints/best.ckpt' as top 1
+Epoch 0:  25%|█████████████████████████▉                                                                             | 53955/214754 [6:43:42<20:03:08,  2.23it/s, v_num=0Connection 
 
-1个epoch的iter：214_754 ~ 220_000
-
-参数量：
-- 29B token 数据, 过滤条 20% ~ 23.2B token
-- 一般来说一个参数对应10个token，那么 23.2B token，就需要对应 2B 参数量 -> 2000M
-medium -> 322 M
-large ->  651 M
-large_1B -> 984M
 
 
 ---

@@ -152,7 +152,7 @@ def _train(config, logger, tokenizer):
       callbacks.append(hydra.utils.instantiate(callback))
 
   train_ds, valid_ds = dataloader.get_dataloaders(config, tokenizer)
-  # _print_batch(train_ds, valid_ds, tokenizer)
+  _print_batch(train_ds, valid_ds, tokenizer)
 
   if config.training.from_pretrained is not None and ckpt_path is None:
     logger.info(f'Loading pretrained model from {config.training.from_pretrained}')
