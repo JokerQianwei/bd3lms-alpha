@@ -112,7 +112,9 @@ python -u main.py \
     '+wandb.resume=never'\
     model.attn_backend=sdpa \
     trainer.max_steps=220_000 \
-    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
+    checkpointing.resume_from_ckpt=True \ 
+    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/last.ckpt
 ```
 
 构造SMILES-cached数据：丢弃超长样本 448234/426640404 (0.11%); 实际训练的样本数量: 426_192_170
@@ -153,6 +155,8 @@ python -u main.py \
     model.attn_backend=sdpa \
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-addBOSEOS--len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}'
+    checkpointing.resume_from_ckpt=True \ 
+    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/fragment/mdlm-addBOSEOS--len66/2025.10.23/201916/checkpoints/last.ckpt
 ```
 
 Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343_605_643
