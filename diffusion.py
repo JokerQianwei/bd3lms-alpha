@@ -15,6 +15,7 @@ import metrics
 import models
 import noise_schedule
 import utils
+from smiles_metrics import SmilesMetrics
 import numpy as np
 import itertools
 
@@ -715,7 +716,7 @@ class Diffusion(L.LightningModule):
       num_steps=num_steps,
       eps=eps)
     if self.config.data.valid == 'smiles':
-      smiles_metrics_calculator = utils.SmilesMetrics(n_target=len(samples))
+      smiles_metrics_calculator = SmilesMetrics(n_target=len(samples))
       smiles_stats = smiles_metrics_calculator.compute(samples)
       return samples, smiles_stats
     else:

@@ -12,6 +12,7 @@ import transformers
 import dataloader
 import diffusion
 import utils
+from smiles_metrics import SmilesMetrics
 
 omegaconf.OmegaConf.register_new_resolver(
   'cwd', os.getcwd)
@@ -98,7 +99,7 @@ def generate_samples(config, logger, tokenizer):
       # Save generated samples
       samples_path = os.path.join(config.sampling.logdir, "samples.txt")
       # 仅保留第一个 [EOS] 之前的样本，并移除特殊标记/空格
-      cleaned_samples = [utils.SmilesMetrics._clean_smiles_text(s) for s in text_samples]
+      cleaned_samples = [SmilesMetrics._clean_smiles_text(s) for s in text_samples]
       with fsspec.open(samples_path, 'w', auto_mkdir=True) as f:
           f.write("\n".join(cleaned_samples) + "\n")
       logger.info(f"Generated SMILES samples saved to: {samples_path}")
