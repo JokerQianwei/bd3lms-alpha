@@ -237,40 +237,137 @@ class GaussianSampler:
 
 import numpy as np
 from tdc import Oracle, Evaluator
+from typing import List
+
+try:
+    # RDKit 用于有效性判断与规范化（canonical SMILES）
+    from rdkit import Chem  # type: ignore
+    _HAS_RDKIT = True
+except Exception:
+    Chem = None  # type: ignore
+    _HAS_RDKIT = False
 
 class SmilesMetrics:
+    """SMILES 评测：validity/uniqueness/diversity/quality。
+
+    关键修正：
+    - 先对解码字符串做清洗（去空格与特殊标记），避免 RDKit 解析失败；
+    - 使用 RDKit 过滤无效分子并做 canonical 化，再计算各指标；
+    - 对可能的 NaN/异常做稳健回退（置 0.0）。
+    """
+
+    # 仅移除明确的特殊标记，不移除诸如 [nH] 等合法 SMILES 原子标记
+    SPECIAL_TOKENS = {"[BOS]", "[EOS]", "[PAD]", "[CLS]", "[SEP]", "[MASK]", "[UNK]"}
+
     def __init__(self, n_target: int):
         self.n_target = max(int(n_target), 1)
         self.evaluator = Evaluator('diversity')
         self.oracle_qed = Oracle('qed')
         self.oracle_sa = Oracle('sa')
 
-    def compute(self, smiles_list):
+    @staticmethod
+    def _clean_smiles_text(s: str) -> str:
+        """将解码后的字符串清洗为 SMILES：
+        - 按空格切分去除特殊标记；
+        - 其余 token 无缝拼接（不引入空格）。
         """
-        Computes validity, uniqueness, diversity, and quality for a list of SMILES strings.
+        if not isinstance(s, str):
+            return ""
+        tokens = s.strip().split()
+        # 若包含分隔符 [EOS]，仅取第一段，避免拼接跨多条 SMILES
+        if "[EOS]" in tokens:
+            tokens = tokens[: tokens.index("[EOS]")]
+        filtered: List[str] = [t for t in tokens if t not in SmilesMetrics.SPECIAL_TOKENS]
+        return "".join(filtered)
+
+    def _valid_canonical_all(self, smiles: List[str]) -> List[str]:
+        """返回“有效且 canonical 化”的列表（保留重复项）。
+
+        若 RDKit 不可用，则仅做非空过滤。
         """
-        # 1. Validity: 有效返回条数 / 目标条数
-        validity = len(smiles_list) / self.n_target
-
-        # 2. Uniqueness: 按字符串去重（相对有效返回数）
-        seen = set()
-        uniq_list = []
-        for s in smiles_list:
-            if s not in seen:
-                seen.add(s)
-                uniq_list.append(s)
-        uniqueness = (len(uniq_list) / max(len(smiles_list), 1)) if smiles_list else 0.0
-
-        # 3. Diversity：对去重后的集合
-        diversity = float(self.evaluator(uniq_list)) if len(uniq_list) > 1 else 0.0
-
-        # 4. Quality：QED>=0.6 且 SA<=4（分母用目标条数）
-        if smiles_list:
-            q = self.oracle_qed(smiles_list)
-            s = self.oracle_sa(smiles_list)
-            ok = sum((qq >= 0.6) and (ss <= 4.0) for qq, ss in zip(q, s))
+        cleaned = [self._clean_smiles_text(s) for s in smiles]
+        if _HAS_RDKIT:
+            valid_all: List[str] = []
+            for s in cleaned:
+                if not s:
+                    continue
+                try:
+                    mol = Chem.MolFromSmiles(s)
+                except Exception:
+                    mol = None
+                if mol is None:
+                    continue
+                try:
+                    cano = Chem.MolToSmiles(mol, canonical=True)
+                except Exception:
+                    cano = s
+                valid_all.append(cano)
         else:
-            ok = 0
+            valid_all = [s for s in cleaned if s]
+        return valid_all
+
+    @staticmethod
+    def _dedup_preserve_order(items: List[str]) -> List[str]:
+        seen = set()
+        out: List[str] = []
+        for x in items:
+            if x not in seen:
+                seen.add(x)
+                out.append(x)
+        return out
+
+    def compute(self, smiles_list):
+        """计算四个指标。
+
+        口径：
+        - validity = 有效分子数 / n_target
+        - uniqueness = 去重后有效分子数 / 有效分子数
+        - diversity = TDC Evaluator('diversity') 于“有效且去重”的集合；不足 2 条或 NaN 时记 0.0
+        - quality = 满足 (QED≥0.6 且 SA≤4.0) 的有效分子数 / n_target
+        """
+        smiles_list = smiles_list or []
+
+        # 有效（含重复）与去重后的集合
+        valid_all = self._valid_canonical_all(smiles_list)
+        uniq_valid = self._dedup_preserve_order(valid_all)
+        num_valid = len(valid_all)
+
+        # validity：化学有效率，以 n_target 为分母
+        validity = num_valid / self.n_target
+
+        # uniqueness：在“有效分子”范围内的去重率（去重后 / 含重复）
+        uniqueness = (len(uniq_valid) / max(len(valid_all), 1)) if valid_all else 0.0
+
+        # diversity：对“有效且去重”的集合
+        if len(uniq_valid) > 1:
+            try:
+                diversity = float(self.evaluator(uniq_valid))
+                if not np.isfinite(diversity):
+                    diversity = 0.0
+            except Exception:
+                diversity = 0.0
+        else:
+            diversity = 0.0
+
+        # quality：在“有效分子”上跑 QED/SA，再与阈值比较；分母仍然用 n_target
+        ok = 0
+        if num_valid > 0:
+            try:
+                q_list = self.oracle_qed(valid_all)
+                s_list = self.oracle_sa(valid_all)
+                # 防御性：过滤非数
+                for qq, ss in zip(q_list, s_list):
+                    if qq is None or ss is None:
+                        continue
+                    try:
+                        qv = float(qq)
+                        sv = float(ss)
+                    except Exception:
+                        continue
+                    if np.isfinite(qv) and np.isfinite(sv) and (qv >= 0.6) and (sv <= 4.0):
+                        ok += 1
+            except Exception:
+                ok = 0
         quality = ok / self.n_target
 
         return {
@@ -279,3 +376,4 @@ class SmilesMetrics:
             "diversity": float(diversity),
             "quality": float(quality),
         }
+    

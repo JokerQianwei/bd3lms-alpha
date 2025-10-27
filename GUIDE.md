@@ -114,10 +114,34 @@ python -u main.py \
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
     checkpointing.resume_from_ckpt=True \ 
-    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/last.ckpt
+    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.24/142148/checkpoints/0-55000.ckpt
 
 
-python main.py \
+```
+
+构造SMILES-cached数据：丢弃超长样本 448234/426640404 (0.11%); 实际训练的样本数量: 426_192_170
+---
+#### SMIELS实验记录
+**第一次训练**
+  | Name     | Type           | Params | Mode
+----------------------------------------------------
+0 | backbone | DIT            | 984 M  | train
+1 | noise    | LogLinearNoise | 0      | train
+----------------------------------------------------
+Epoch 0:  10%|██████████                                                                                           | 26637/266371 [3:15:36<29:20:25,  2.27it/s, v_num=0]Epoch 0, global step 26637: 'val/nll' reached 0.98462 (best 0.98462), saving model to '/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/best.ckpt' as top 1
+Epoch 0:  20%|████████████████████▌                                                                                  | 53274/266371 [6:31:24<26:05:39,  2.27it/s, v_num=0]
+Epoch 0, global step 53274: 'val/nll' was not in top 1
+第二次恢复训练 smiles 从 step=55000 开始
+
+
+
+
+
+### Fragment 训练
+数据路径：/data/yqw/bd3lms/DATA/DrugLikeFragSeqV2-29B-425M
+
+```bash
+python -u main.py \
     loader.global_batch_size=1600 \
     loader.eval_global_batch_size=1600 \
     model=large_1B \
@@ -136,57 +160,12 @@ python main.py \
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
     checkpointing.resume_from_ckpt=True \
-    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/last.ckpt 
-
-```
-
-构造SMILES-cached数据：丢弃超长样本 448234/426640404 (0.11%); 实际训练的样本数量: 426_192_170
----
-#### 实验记录
-**第一次训练**
-  | Name     | Type           | Params | Mode
-----------------------------------------------------
-0 | backbone | DIT            | 984 M  | train
-1 | noise    | LogLinearNoise | 0      | train
-----------------------------------------------------
-Epoch 0:  10%|██████████                                                                                           | 26637/266371 [3:15:36<29:20:25,  2.27it/s, v_num=0]Epoch 0, global step 26637: 'val/nll' reached 0.98462 (best 0.98462), saving model to '/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/best.ckpt' as top 1
-Epoch 0:  20%|████████████████████▌                                                                                  | 53274/266371 [6:31:24<26:05:39,  2.27it/s, v_num=0]
-Epoch 0, global step 53274: 'val/nll' was not in top 1
-
-
-
-
-
-
-### Fragment 训练
-数据路径：/data/yqw/bd3lms/DATA/DrugLikeFragSeqV2-29B-425M
-
-```bash
-python main.py \
-    loader.global_batch_size=1600 \
-    loader.eval_global_batch_size=1600 \
-    model=large_1B \
-    algo=mdlm \
-    data=smiles \
-    model.length=66 \
-    wandb=None \
-    trainer.val_check_interval=0.1 \
-    trainer.limit_val_batches=0.05 \
-    loader.num_workers=2 \
-    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
-    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M-addBOSEOS \
-    '+wandb.mode=disabled' \
-    '+wandb.resume=never' \
-    model.attn_backend=sdpa \
-    trainer.max_steps=220_000 \
-     'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
-    checkpointing.resume_from_ckpt=True \
-    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/fragment/mdlm-addBOSEOS-len66/2025.10.23/201916/checkpoints/last.ckpt
+    checkpointing.resume_ckpt_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.24/142148/checkpoints/0-55000.ckpt
 ```
 
 Fragment 丢弃超长样本： 81833255/425438898 (19.24%); 实际训练的样本数量: 343_605_643
 
-#### 实验记录
+####  Fragment 实验记录
   | Name     | Type           | Params | Mode
 ----------------------------------------------------
 0 | backbone | DIT            | 984 M  | train
@@ -196,8 +175,7 @@ Epoch 0:  10%|██████████                                    
 Epoch 0:  20%|████████████████████▌                                                                                  | 42950/214754 [5:22:17<21:29:10,  2.22it/s, v_num=0]
 Epoch 0, global step 42950: 'val/nll' reached 0.76419 (best 0.76419), saving model to '/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/fragment/mdlm-addBOSEOS--len66/2025.10.23/201916/checkpoints/best.ckpt' as top 1
 Epoch 0:  25%|█████████████████████████▉                                                                             | 53955/214754 [6:43:42<20:03:08,  2.23it/s, v_num=0Connection 
-
-
+第二次恢复训练 fragment 从 step=50000 开始
 
 ---
 ## 采样
@@ -205,21 +183,19 @@ first_hitting 不支持并行采样
 ```bash
 python -u -m main \
     mode=sample_eval \
-    sampling.num_sample_batches=25 \
+    sampling.num_sample_batches=100 \
     loader.eval_batch_size=1 \
     data=smiles \
     algo=mdlm \
     algo.T=5000 \
     model=large_1B \
-    model.length=64 \
-    eval.checkpoint_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha-main/outputs/smiles/mdlm-len64/2025.10.23/054208/checkpoints/0-80000.ckpt \
+    model.length=66 \
+    +eval.checkpoint_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/mdlm-addBOSEOS-len66/2025.10.23/201851/checkpoints/0-55000.ckpt \
     seed=2 \
     sampling.nucleus_p=0.9 \
     sampling.logdir=$PWD/sample_logs/samples_mdlm_len64 \
-    algo.ignore_bos=false \
     model.attn_backend=sdpa \
     sampling.first_hitting=true
-
 
 ```
 
