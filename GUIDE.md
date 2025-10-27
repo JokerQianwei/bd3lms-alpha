@@ -196,7 +196,6 @@ python -u -m main \
     sampling.logdir=$PWD/sample_logs/samples_mdlm_len64 \
     model.attn_backend=sdpa \
     sampling.first_hitting=true
-
 ```
 
 
@@ -222,3 +221,30 @@ python -u -m main \
     - 如果我想生成和 SMILES A 类似的分子，我在采样的时候，将 A 固定在最前面的token上，然后扩散还原，其他token
     - 期望可以生成和A类似性质的SMLES
     - 然后根据EOS切割解码
+
+
+# 新 使用 bd3lms 训练 smiles
+```bash
+python -u main.py \
+    loader.global_batch_size=16 \
+    loader.eval_global_batch_size=16 \
+    model=small \
+    algo=bd3lm \
+    +algo.clip_search_widths='[0.5,0.6,0.7,0.8,0.9]' \
+    data=smiles \
+    model.length=64 \
+    block_size=4 \
+    wandb.name=None \
+    mode=train \
+    model.attn_backend=flex \
+    trainer.val_check_interval=0.1 \
+    trainer.limit_val_batches=0.05 \
+    loader.num_workers=2 \
+    trainer.max_steps=220_000 \
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/bd3lms-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
+    data.raw_data_path=/data/yqw/bd3lms-alpha/data/DrugLikeSMILSE-debug \
+    data.cache_dir=/data/yqw/bd3lms-alpha/cache/DrugLikeSMILSE-debug-len64 \
+    '+wandb.mode=disabled' \
+    '+wandb.resume=never' 
+
+```
