@@ -226,8 +226,8 @@ python -u -m main \
 # 新 使用 bd3lms 训练 smiles
 ```bash
 python -u main.py \
-    loader.global_batch_size=1600 \
-    loader.eval_global_batch_size=1600 \
+    loader.global_batch_size=800 \
+    loader.eval_global_batch_size=800 \
     model=large_1B \
     algo=bd3lm \
     +algo.clip_search_widths='[0.5,0.6,0.7,0.8,0.9]' \
@@ -247,13 +247,17 @@ python -u main.py \
     '+wandb.mode=disabled' \
     '+wandb.resume=never' 
 ```
-[INFO] - 构造SMILES-cached数据：丢弃超长样本 1623143/426640404 (0.38%); 实际训练的样本数量: 425017261
+[INFO] - 构造训练集 SMILES-cached 数据：丢弃超长样本 1623143/426640404 (0.38%); 实际训练的样本数量: 425_017_261
+[INFO] - 构造验证集 SMILES-cached 数据：丢弃超长样本 12416/51150525 (0.02%); 实际训练的样本数量: 51_138_109
+
+
+
 
 # 新 使用 bd3lms 训练 fragment
 ```bash
 python -u main.py \
-    loader.global_batch_size=1600 \
-    loader.eval_global_batch_size=1600 \
+    loader.global_batch_size=800 \
+    loader.eval_global_batch_size=800 \
     model=large_1B \
     algo=bd3lm \
     +algo.clip_search_widths='[0.5,0.6,0.7,0.8,0.9]' \
@@ -266,10 +270,12 @@ python -u main.py \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
     loader.num_workers=2 \
-    trainer.max_steps=220_000 \
-    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/bd3lms-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
+    trainer.max_steps=420_000 \
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/bd3lms-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeFragSeqV2-29B-425M \
     data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M-addBOSEOS-len64 \
     '+wandb.mode=disabled' \
     '+wandb.resume=never' 
 ```
+
+[INFO] - 构造fragment-cached数据：丢弃超长样本 103812712/425438898 (24.40%); 实际训练的样本数量: 321626186b
