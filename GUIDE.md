@@ -226,9 +226,9 @@ python -u -m main \
 # 新 使用 bd3lms 训练 smiles
 ```bash
 python -u main.py \
-    loader.global_batch_size=16 \
-    loader.eval_global_batch_size=16 \
-    model=small \
+    loader.global_batch_size=1600 \
+    loader.eval_global_batch_size=1600 \
+    model=large_1B \
     algo=bd3lm \
     +algo.clip_search_widths='[0.5,0.6,0.7,0.8,0.9]' \
     data=smiles \
@@ -242,9 +242,34 @@ python -u main.py \
     loader.num_workers=2 \
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/bd3lms-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
-    data.raw_data_path=/data/yqw/bd3lms-alpha/data/DrugLikeSMILSE-debug \
-    data.cache_dir=/data/yqw/bd3lms-alpha/cache/DrugLikeSMILSE-debug-len64 \
+    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M-addBOSEOS-len64-bd3lms \
     '+wandb.mode=disabled' \
     '+wandb.resume=never' 
+```
+[INFO] - 构造SMILES-cached数据：丢弃超长样本 1623143/426640404 (0.38%); 实际训练的样本数量: 425017261
 
+# 新 使用 bd3lms 训练 fragment
+```bash
+python -u main.py \
+    loader.global_batch_size=1600 \
+    loader.eval_global_batch_size=1600 \
+    model=large_1B \
+    algo=bd3lm \
+    +algo.clip_search_widths='[0.5,0.6,0.7,0.8,0.9]' \
+    data=smiles \
+    model.length=64 \
+    block_size=4 \
+    wandb.name=None \
+    mode=train \
+    model.attn_backend=flex \
+    trainer.val_check_interval=0.1 \
+    trainer.limit_val_batches=0.05 \
+    loader.num_workers=2 \
+    trainer.max_steps=220_000 \
+    'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/bd3lms-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
+    data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeFragSeqV2-29B-425M \
+    data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M-addBOSEOS-len64 \
+    '+wandb.mode=disabled' \
+    '+wandb.resume=never' 
 ```
