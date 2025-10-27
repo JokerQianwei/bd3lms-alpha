@@ -238,14 +238,7 @@ class GaussianSampler:
 import numpy as np
 from tdc import Oracle, Evaluator
 from typing import List
-
-try:
-    # RDKit 用于有效性判断与规范化（canonical SMILES）
-    from rdkit import Chem  # type: ignore
-    _HAS_RDKIT = True
-except Exception:
-    Chem = None  # type: ignore
-    _HAS_RDKIT = False
+from rdkit import Chem
 
 class SmilesMetrics:
     """SMILES 评测：validity/uniqueness/diversity/quality。
@@ -281,29 +274,23 @@ class SmilesMetrics:
         return "".join(filtered)
 
     def _valid_canonical_all(self, smiles: List[str]) -> List[str]:
-        """返回“有效且 canonical 化”的列表（保留重复项）。
-
-        若 RDKit 不可用，则仅做非空过滤。
-        """
+        """返回“有效且 canonical 化”的列表（保留重复项）"""
         cleaned = [self._clean_smiles_text(s) for s in smiles]
-        if _HAS_RDKIT:
-            valid_all: List[str] = []
-            for s in cleaned:
-                if not s:
-                    continue
-                try:
-                    mol = Chem.MolFromSmiles(s)
-                except Exception:
-                    mol = None
-                if mol is None:
-                    continue
-                try:
-                    cano = Chem.MolToSmiles(mol, canonical=True)
-                except Exception:
-                    cano = s
-                valid_all.append(cano)
-        else:
-            valid_all = [s for s in cleaned if s]
+        valid_all: List[str] = []
+        for s in cleaned:
+            if not s:
+                continue
+            try:
+                mol = Chem.MolFromSmiles(s)
+            except Exception:
+                mol = None
+            if mol is None:
+                continue
+            try:
+                cano = Chem.MolToSmiles(mol, canonical=True)
+            except Exception:
+                cano = s
+            valid_all.append(cano)
         return valid_all
 
     @staticmethod

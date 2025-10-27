@@ -111,6 +111,7 @@ python -u main.py \
     '+wandb.mode=disabled' \
     '+wandb.resume=never'\
     model.attn_backend=sdpa \
+    training.resample=True
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
     checkpointing.resume_from_ckpt=True \ 
@@ -157,6 +158,7 @@ python -u main.py \
     '+wandb.mode=disabled' \
     '+wandb.resume=never' \
     model.attn_backend=sdpa \
+    training.resample=True \
     trainer.max_steps=220_000 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/smiles/mdlm-addBOSEOS-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
     checkpointing.resume_from_ckpt=True \
@@ -226,9 +228,9 @@ python -u -m main \
 # 新 使用 bd3lms 训练 smiles
 ```bash
 python -u main.py \
-    loader.global_batch_size=800 \
-    loader.eval_global_batch_size=800 \
-    model=large_1B \
+    loader.global_batch_size=1480 \
+    loader.eval_global_batch_size=1480 \
+    model=large \
     algo=bd3lm \
     +algo.clip_search_widths='[0.5,0.6,0.7,0.8,0.9]' \
     data=smiles \
@@ -236,7 +238,8 @@ python -u main.py \
     block_size=4 \
     wandb.name=None \
     mode=train \
-    model.attn_backend=flex \
+    model.attn_backend=sdpa \
+    training.resample=True \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
     loader.num_workers=2 \
@@ -245,20 +248,18 @@ python -u main.py \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeSMILSE-12B-427M \
     data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeSMILES-12B-427M-addBOSEOS-len64-bd3lms \
     '+wandb.mode=disabled' \
-    '+wandb.resume=never' 
+    '+wandb.resume=never'
 ```
 [INFO] - 构造训练集 SMILES-cached 数据：丢弃超长样本 1623143/426640404 (0.38%); 实际训练的样本数量: 425_017_261
-[INFO] - 构造验证集 SMILES-cached 数据：丢弃超长样本 12416/51150525 (0.02%); 实际训练的样本数量: 51_138_109
-
-
+max_step = 332_045
 
 
 # 新 使用 bd3lms 训练 fragment
 ```bash
 python -u main.py \
-    loader.global_batch_size=800 \
-    loader.eval_global_batch_size=800 \
-    model=large_1B \
+    loader.global_batch_size=1480 \
+    loader.eval_global_batch_size=1480 \
+    model=large \
     algo=bd3lm \
     +algo.clip_search_widths='[0.5,0.6,0.7,0.8,0.9]' \
     data=smiles \
@@ -266,16 +267,39 @@ python -u main.py \
     block_size=4 \
     wandb.name=None \
     mode=train \
-    model.attn_backend=flex \
+    model.attn_backend=sdpa \
+    training.resample=True \
     trainer.val_check_interval=0.1 \
     trainer.limit_val_batches=0.05 \
     loader.num_workers=2 \
-    trainer.max_steps=420_000 \
+    trainer.max_steps=332_045 \
     'hydra.run.dir=${hydra:runtime.cwd}/outputs/fragment/bd3lms-len${model.length}/${now:%Y.%m.%d}/${now:%H%M%S}' \
     data.raw_data_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/data/DrugLikeFragSeqV2-29B-425M \
     data.cache_dir=/share/home/tm866079609100000/a875465180/yqw_bd3lms/cache/cache-DrugLikeFragSeqV2-29B-425M-addBOSEOS-len64 \
     '+wandb.mode=disabled' \
     '+wandb.resume=never' 
 ```
+[INFO] - 构造fragment-cached数据：丢弃超长样本 103812712/425438898 (24.40%); 实际训练的样本数量: 321_626_186
+[INFO] -  Trainable params: large -> 651 M    
+token数：12B -> 每个参数对应 15-25 个 token
 
-[INFO] - 构造fragment-cached数据：丢弃超长样本 103812712/425438898 (24.40%); 实际训练的样本数量: 321626186b
+## 采样测试
+
+/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/bd3lms-len64/2025.10.27/194226/checkpoints/0-5000.ckpt
+```bash
+python -u -m main \
+    mode=sample_eval \
+    sampling.num_sample_batches=100 \
+    loader.eval_batch_size=1 \
+    data=smiles \
+    algo=bd3lm \
+    algo.T=5000 \
+    model=large \
+    model.length=64 \
+    +eval.checkpoint_path=/share/home/tm866079609100000/a875465180/yqw_bd3lms/bd3lms-alpha/outputs/smiles/bd3lms-len64/2025.10.27/194226/checkpoints/0-5000.ckpt \
+    seed=2 \
+    sampling.nucleus_p=0.9 \
+    sampling.logdir=$PWD/sample_logs/samples_mdlm_len64 \
+    model.attn_backend=sdpa \
+    sampling.first_hitting=true
+```
